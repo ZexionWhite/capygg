@@ -103,9 +103,11 @@ async function completeVerification(challenge: VerificationChallenge, region: Re
 	}
 
 	let soloTier: string | null = null;
+	let soloQueueFetched = false;
 	try {
 		const entries = await riotClient.getLeagueEntriesByPuuid(challenge.puuid, region);
-		soloTier = entries.find((entry) => entry.queueType === QUEUES.SOLO)?.tier ?? null;
+		soloQueueFetched = true;
+		soloTier = entries.find((entry) => entry.queueType === QUEUES.SOLO)?.tier ?? 'UNRANKED';
 	} catch (error) {
 		container.logger.error(error);
 	}
@@ -126,7 +128,7 @@ async function completeVerification(challenge: VerificationChallenge, region: Re
 	const guild = await fetchGuild(challenge.guildId);
 	const roleAssigned = guild ? await assignStoredRole(guild, challenge.discordId, region) : false;
 	const eloRole =
-		soloTier && isEloTier(soloTier)
+		soloQueueFetched && soloTier && isEloTier(soloTier)
 			? { tier: soloTier, assigned: guild ? await assignStoredRole(guild, challenge.discordId, soloTier) : false }
 			: null;
 

@@ -2,7 +2,8 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ActionRowBuilder, ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import { FORM_FIELD_IDS, INTERACTION_IDS } from '../lib/constants';
-import { buildVerificationPanelEmbed } from '../lib/embeds/verification';
+import { buildAlreadyLinkedMessage, buildVerificationInProgressMessage } from '../lib/embeds/verification';
+import { ephemeralNoticeMessage, ephemeralV2 } from '../lib/ui';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.Button
@@ -16,17 +17,13 @@ export class VerifyStartHandler extends InteractionHandler {
 		try {
 			const account = await this.container.prisma.riotAccount.findUnique({ where: { discordId: interaction.user.id } });
 			if (account) {
-				return interaction.reply({
-					ephemeral: true,
-					embeds: [
-						buildVerificationPanelEmbed()
-							.setTitle('Cuenta ya vinculada')
-							.setDescription(
-								`Ya tenés vinculada la cuenta **${account.gameName}#${account.tagLine}** en la región **${account.region}**.`
-							)
-					]
-				});
+				return interaction.reply(ephemeralV2(buildAlreadyLinkedMessage(account.gameName, account.tagLine, account.region)));
 			}
+
+			const inProgress = await this.container.prisma.verificationChallenge.findFirst({
+				where: { discordId: interaction.user.id, startedAt: { not: null } }
+			});
+			if (inProgress) return interaction.reply(ephemeralV2(buildVerificationInProgressMessage()));
 
 			const modal = new ModalBuilder().setCustomId(INTERACTION_IDS.verifyAccountModal).setTitle('Verificar cuenta de Riot');
 			const riotId = new TextInputBuilder()
@@ -52,7 +49,7 @@ export class VerifyStartHandler extends InteractionHandler {
 		} catch (error) {
 			this.container.logger.error(error);
 			if (!interaction.replied && !interaction.deferred) {
-				return interaction.reply({ content: 'No pude iniciar la verificación. Intentá nuevamente.', ephemeral: true });
+				return interaction.reply(ephemeralNoticeMessage('error', 'No pude iniciar la verificación. Intentá nuevamente.'));
 			}
 			return;
 		}

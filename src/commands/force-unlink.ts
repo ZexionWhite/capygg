@@ -1,8 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
-import { ApplicationCommandOptionType, EmbedBuilder, PermissionFlagsBits, type GuildMember } from 'discord.js';
+import { ApplicationCommandOptionType, MessageFlags, PermissionFlagsBits, type GuildMember } from 'discord.js';
 import { ELO_TIERS } from '../lib/constants';
 import { isEloTier } from '../lib/types';
+import { noticeMessage } from '../lib/ui';
 
 @ApplyOptions<Command.Options>({
 	description: 'Force unlink a member League of Legends account',
@@ -26,22 +27,22 @@ export class ForceUnlinkCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		try {
-			if (!interaction.guild) return interaction.editReply('Este comando solo puede ejecutarse dentro de un servidor.');
+			if (!interaction.guild) return interaction.editReply(noticeMessage('error', 'Este comando solo puede ejecutarse dentro de un servidor.'));
 			const user = interaction.options.getUser('usuario', true);
 			let member: GuildMember;
 			try {
 				member = await interaction.guild.members.fetch(user.id);
 			} catch (error) {
 				this.container.logger.error(error);
-				return interaction.editReply('No pude encontrar ese miembro dentro del servidor.');
+				return interaction.editReply(noticeMessage('error', 'No pude encontrar ese miembro dentro del servidor.'));
 			}
-			if (!member) return interaction.editReply('El usuario seleccionado no pertenece a este servidor.');
+			if (!member) return interaction.editReply(noticeMessage('error', 'El usuario seleccionado no pertenece a este servidor.'));
 
 			const account = await this.container.prisma.riotAccount.findUnique({ where: { discordId: user.id } });
-			if (!account) return interaction.editReply('Ese usuario no tiene una cuenta de League of Legends vinculada.');
+			if (!account) return interaction.editReply(noticeMessage('warning', 'Ese usuario no tiene una cuenta de League of Legends vinculada.'));
 
 			await this.container.prisma.$transaction([
 				this.container.prisma.riotAccount.delete({ where: { puuid: account.puuid } }),
@@ -57,20 +58,22 @@ export class ForceUnlinkCommand extends Command {
 			);
 			const eloRoleCount = eloRolesRemoved.filter(Boolean).length;
 
-			const embed = new EmbedBuilder()
-				.setColor(0x57f287)
-				.setTitle('Cuenta desvinculada por un administrador')
-				.setDescription(`Se desvinculó **${account.gameName}#${account.tagLine}** de ${user}.`);
-			if (!roleRemoved) embed.addFields({ name: 'Rol de región', value: 'No se encontró o no se pudo quitar el rol regional.' });
-			embed.addFields({ name: 'Roles de elo', value: `Se quitaron ${eloRoleCount} rol${eloRoleCount === 1 ? '' : 'es'} de elo.` });
-			return interaction.editReply({ embeds: [embed] });
+			const lines = [`Se desvinculó **${account.gameName}#${account.tagLine}** de ${user}.`];
+			if (!roleRemoved) lines.push('**Rol de región:** no se encontró o no se pudo quitar.');
+			lines.push(`**Roles de elo:** se quitaron ${eloRoleCount} rol${eloRoleCount === 1 ? '' : 'es'}.`);
+			return interaction.editReply(noticeMessage('success', lines.join('\n'), 'Cuenta desvinculada por un administrador'));
 		} catch (error) {
 			this.container.logger.error(error);
-			return interaction.editReply('No pude forzar la desvinculación. Revisá los permisos y los logs.');
+			return interaction.editReply(noticeMessage('error', 'No pude forzar la desvinculación. Revisá los permisos y los logs.'));
 		}
 	}
 
-	private async removeStoredRole(guildId: string, guild: NonNullable<Command.ChatInputCommandInteraction['guild']>, member: GuildMember, key: string) {
+	private async removeStoredRole(
+		guildId: string,
+		guild: NonNullable<Command.ChatInputCommandInteraction['guild']>,
+		member: GuildMember,
+		key: string
+	) {
 		try {
 			const storedRole = await this.container.prisma.guildRole.findUnique({
 				where: { guildId_key: { guildId, key } }

@@ -2,18 +2,31 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ActionRowBuilder, ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import { FORM_FIELD_IDS, INTERACTION_IDS } from '../lib/constants';
+import { ephemeralNoticeMessage } from '../lib/ui';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.Button
 })
 export class VerifyReportHandler extends InteractionHandler {
 	public override parse(interaction: ButtonInteraction) {
-		return interaction.customId === INTERACTION_IDS.verifyReport ? this.some() : this.none();
+		// Botón del panel del servidor: el ID del servidor sale de la interacción.
+		if (interaction.customId === INTERACTION_IDS.verifyReport) {
+			return interaction.guildId ? this.some(interaction.guildId) : this.none();
+		}
+
+		// Botón enviado por mensaje directo: el ID del servidor viene dentro del customId.
+		if (interaction.customId.startsWith(INTERACTION_IDS.verifyReportDmPrefix)) {
+			const guildId = interaction.customId.slice(INTERACTION_IDS.verifyReportDmPrefix.length);
+			return /^\d+$/.test(guildId) ? this.some(guildId) : this.none();
+		}
+
+		return this.none();
 	}
 
-	public override async run(interaction: ButtonInteraction) {
+	public override async run(interaction: ButtonInteraction, parsedData: unknown) {
 		try {
-			const modal = new ModalBuilder().setCustomId(INTERACTION_IDS.verifyReportModal).setTitle('Reportar un error');
+			const guildId = typeof parsedData === 'string' ? parsedData : '';
+			const modal = new ModalBuilder().setCustomId(`${INTERACTION_IDS.verifyReportModalPrefix}${guildId}`).setTitle('Reportar un error');
 			const category = new TextInputBuilder()
 				.setCustomId(FORM_FIELD_IDS.category)
 				.setLabel('Categoría')
@@ -42,7 +55,7 @@ export class VerifyReportHandler extends InteractionHandler {
 		} catch (error) {
 			this.container.logger.error(error);
 			if (!interaction.replied && !interaction.deferred) {
-				return interaction.reply({ content: 'No pude abrir el formulario de reporte. Intentá nuevamente.', ephemeral: true });
+				return interaction.reply(ephemeralNoticeMessage('error', 'No pude abrir el formulario de reporte. Intentá nuevamente.'));
 			}
 			return;
 		}

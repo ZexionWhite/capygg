@@ -1,8 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
-import { EmbedBuilder, type GuildMember } from 'discord.js';
+import { MessageFlags, type GuildMember } from 'discord.js';
 import { ELO_TIERS } from '../lib/constants';
 import { isEloTier, isRegion } from '../lib/types';
+import { noticeMessage } from '../lib/ui';
 
 @ApplyOptions<Command.Options>({
 	description: 'Unlink your League of Legends account'
@@ -16,12 +17,12 @@ export class UnlinkCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		try {
-			if (!interaction.guild) return interaction.editReply('Este comando solo puede ejecutarse dentro de un servidor.');
+			if (!interaction.guild) return interaction.editReply(noticeMessage('error', 'Este comando solo puede ejecutarse dentro de un servidor.'));
 			const account = await this.container.prisma.riotAccount.findUnique({ where: { discordId: interaction.user.id } });
-			if (!account) return interaction.editReply('No tenés ninguna cuenta de League of Legends vinculada.');
+			if (!account) return interaction.editReply(noticeMessage('warning', 'No tenés ninguna cuenta de League of Legends vinculada.'));
 
 			await this.container.prisma.$transaction([
 				this.container.prisma.riotAccount.delete({ where: { puuid: account.puuid } }),
@@ -37,16 +38,13 @@ export class UnlinkCommand extends Command {
 					.map((tier) => this.removeStoredRole(guild, member, tier))
 			);
 			const eloRoleCount = eloRolesRemoved.filter(Boolean).length;
-			const embed = new EmbedBuilder()
-				.setColor(0x57f287)
-				.setTitle('Cuenta desvinculada')
-				.setDescription(`Se desvinculó **${account.gameName}#${account.tagLine}** correctamente.`);
-			if (!regionRoleRemoved) embed.addFields({ name: 'Rol de región', value: 'No se encontró o no se pudo quitar el rol regional.' });
-			embed.addFields({ name: 'Roles de elo', value: `Se quitaron ${eloRoleCount} rol${eloRoleCount === 1 ? '' : 'es'} de elo.` });
-			return interaction.editReply({ embeds: [embed] });
+			const lines = [`Se desvinculó **${account.gameName}#${account.tagLine}** correctamente.`];
+			if (!regionRoleRemoved) lines.push('**Rol de región:** no se encontró o no se pudo quitar.');
+			lines.push(`**Roles de elo:** se quitaron ${eloRoleCount} rol${eloRoleCount === 1 ? '' : 'es'}.`);
+			return interaction.editReply(noticeMessage('success', lines.join('\n'), 'Cuenta desvinculada'));
 		} catch (error) {
 			this.container.logger.error(error);
-			return interaction.editReply('No pude desvincular tu cuenta. Intentá nuevamente más tarde.');
+			return interaction.editReply(noticeMessage('error', 'No pude desvincular tu cuenta. Intentá nuevamente más tarde.'));
 		}
 	}
 

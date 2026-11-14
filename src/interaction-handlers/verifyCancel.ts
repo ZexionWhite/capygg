@@ -2,6 +2,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ButtonInteraction } from 'discord.js';
 import { INTERACTION_IDS } from '../lib/constants';
+import { noticeMessage } from '../lib/ui';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.Button
@@ -22,10 +23,12 @@ export class VerifyCancelHandler extends InteractionHandler {
 			if (challenge?.discordId === interaction.user.id) {
 				await this.container.prisma.verificationChallenge.delete({ where: { id: challenge.id } });
 			}
-			return interaction.editReply({ content: 'Verificación cancelada.', embeds: [], components: [] });
+			return interaction.editReply(
+				noticeMessage('info', 'La verificación fue cancelada. Podés iniciarla de nuevo desde el panel.', 'Verificación cancelada')
+			);
 		} catch (error) {
 			this.container.logger.error(error);
-			return interaction.editReply({ content: 'No pude cancelar la verificación. Intentá nuevamente.', components: [] });
+			return interaction.editReply(noticeMessage('error', 'No pude cancelar la verificación. Intentá nuevamente.'));
 		}
 	}
 }

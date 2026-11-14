@@ -1,8 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
-import { DiscordAPIError, EmbedBuilder, PermissionFlagsBits, type ColorResolvable, type Guild, type Role } from 'discord.js';
+import { DiscordAPIError, MessageFlags, PermissionFlagsBits, type ColorResolvable, type Guild, type Role } from 'discord.js';
 import { ELO_TIERS, REGIONS } from '../lib/constants';
 import type { EloTier, Region } from '../lib/types';
+import { noticeMessage } from '../lib/ui';
 
 @ApplyOptions<Command.Options>({
 	description: 'Create or reuse the roles required by the bot',
@@ -18,16 +19,18 @@ export class SetupCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		const guild = interaction.guild;
 		if (!guild) {
-			return interaction.editReply('Este comando solo puede ejecutarse dentro de un servidor.');
+			return interaction.editReply(noticeMessage('error', 'Este comando solo puede ejecutarse dentro de un servidor.'));
 		}
 
 		const botMember = guild.members.me;
 		if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
-			return interaction.editReply('No puedo ejecutar la configuración porque me falta el permiso **Gestionar roles**.');
+			return interaction.editReply(
+				noticeMessage('error', 'No puedo ejecutar la configuración porque me falta el permiso **Gestionar roles**.')
+			);
 		}
 
 		try {
@@ -52,15 +55,18 @@ export class SetupCommand extends Command {
 				reused += result.created ? 0 : 1;
 			}
 
-			const embed = new EmbedBuilder()
-				.setColor(0x5865f2)
-				.setTitle('Configuración completada')
-				.setDescription(`Se crearon **${created}** roles y se reutilizaron **${reused}** roles existentes.`);
-
-			return interaction.editReply({ embeds: [embed] });
+			return interaction.editReply(
+				noticeMessage(
+					'success',
+					`Se crearon **${created}** roles y se reutilizaron **${reused}** roles existentes.\nSiguiente paso: usá \`/set-verify-channel\` para publicar el panel de verificación.`,
+					'Configuración completada'
+				)
+			);
 		} catch (error) {
 			this.container.logger.error(error);
-			return interaction.editReply('No pude completar la configuración. Revisá los permisos del bot y los logs para más detalles.');
+			return interaction.editReply(
+				noticeMessage('error', 'No pude completar la configuración. Revisá los permisos del bot y los logs para más detalles.')
+			);
 		}
 	}
 

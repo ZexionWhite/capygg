@@ -8,6 +8,7 @@ import { renderProfileImage } from '../lib/profile/render';
 import { isRegion } from '../lib/types';
 import type { Region } from '../lib/types';
 import type { RiotLeagueEntry, RiotMatchSummary } from '../lib/types/riot';
+import { noticeMessage } from '../lib/ui';
 
 @ApplyOptions<Command.Options>({
 	description: 'Show a League of Legends profile'
@@ -34,8 +35,8 @@ export class ProfileCommand extends Command {
 		try {
 			const target = interaction.options.getUser('usuario') ?? interaction.user;
 			const account = await this.container.prisma.riotAccount.findUnique({ where: { discordId: target.id } });
-			if (!account) return interaction.editReply(`${target} no tiene una cuenta de League of Legends vinculada.`);
-			if (!isRegion(account.region)) return interaction.editReply('La cuenta vinculada tiene una región inválida.');
+			if (!account) return interaction.editReply(noticeMessage('warning', `${target} no tiene una cuenta de League of Legends vinculada.`));
+			if (!isRegion(account.region)) return interaction.editReply(noticeMessage('error', 'La cuenta vinculada tiene una región inválida.'));
 			const region: Region = account.region;
 
 			const summoner = await riotClient.getSummonerByPuuid(account.puuid, region);
@@ -60,11 +61,14 @@ export class ProfileCommand extends Command {
 				matches
 			});
 
-			return interaction.editReply({ files: [new AttachmentBuilder(image, { name: 'profile.png' })] });
+			return interaction.editReply({
+				files: [new AttachmentBuilder(image, { name: 'profile.png' })],
+				allowedMentions: { parse: [] }
+			});
 		} catch (error) {
 			this.container.logger.error(error);
-			if (error instanceof RiotApiError) return interaction.editReply(riotErrorMessage(error));
-			return interaction.editReply('No pude generar el perfil. Intentá nuevamente más tarde.');
+			if (error instanceof RiotApiError) return interaction.editReply(noticeMessage('error', riotErrorMessage(error)));
+			return interaction.editReply(noticeMessage('error', 'No pude generar el perfil. Intentá nuevamente más tarde.'));
 		}
 	}
 

@@ -1,12 +1,13 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
-import { ApplicationCommandOptionType, EmbedBuilder, PermissionFlagsBits, type Guild, type GuildMember } from 'discord.js';
+import { ApplicationCommandOptionType, MessageFlags, PermissionFlagsBits, type Guild, type GuildMember } from 'discord.js';
 import { QUEUES, REGIONS } from '../lib/constants';
 import { RiotApiError, riotClient } from '../lib/riot/client';
 import { riotErrorMessage } from '../lib/riot/messages';
 import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
 import { isEloTier, isRegion } from '../lib/types';
 import type { Region } from '../lib/types';
+import { noticeMessage } from '../lib/ui';
 
 const regionChoices = Object.keys(REGIONS).map((region) => ({ name: region, value: region }));
 
@@ -45,30 +46,33 @@ export class ForceVerifyCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		try {
-			if (!interaction.guild) return interaction.editReply('Este comando solo puede ejecutarse dentro de un servidor.');
+			if (!interaction.guild) return interaction.editReply(noticeMessage('error', 'Este comando solo puede ejecutarse dentro de un servidor.'));
 			const user = interaction.options.getUser('usuario', true);
 			let member: GuildMember;
 			try {
 				member = await interaction.guild.members.fetch(user.id);
 			} catch (error) {
 				this.container.logger.error(error);
-				return interaction.editReply('No pude encontrar ese miembro dentro del servidor.');
+				return interaction.editReply(noticeMessage('error', 'No pude encontrar ese miembro dentro del servidor.'));
 			}
-			if (!member) return interaction.editReply('El usuario seleccionado no pertenece a este servidor.');
+			if (!member) return interaction.editReply(noticeMessage('error', 'El usuario seleccionado no pertenece a este servidor.'));
 
 			const { gameName, tagLine } = parseRiotId(interaction.options.getString('riot_id', true));
 			const regionValue = interaction.options.getString('region', true).toUpperCase();
-			if (!isRegion(regionValue)) return interaction.editReply(`Región inválida. Usá una de estas: ${Object.keys(REGIONS).join(', ')}.`);
+			if (!isRegion(regionValue))
+				return interaction.editReply(noticeMessage('error', `Región inválida. Usá una de estas: ${Object.keys(REGIONS).join(', ')}.`));
 			const region: Region = regionValue;
 
 			const account = await riotClient.getAccountByRiotId(gameName, tagLine, region);
 			const summoner = await riotClient.getSummonerByPuuid(account.puuid, region);
 			const linkedAccount = await this.container.prisma.riotAccount.findUnique({ where: { puuid: account.puuid } });
 			if (linkedAccount && linkedAccount.discordId !== user.id) {
-				return interaction.editReply('Esa cuenta de Riot ya está vinculada a otro usuario. Usá `/force-unlink` primero si corresponde.');
+				return interaction.editReply(
+					noticeMessage('error', 'Esa cuenta de Riot ya está vinculada a otro usuario. Usá `/force-unlink` primero si corresponde.')
+				);
 			}
 
 			const previousAccount = await this.container.prisma.riotAccount.findUnique({ where: { discordId: user.id } });
@@ -115,24 +119,19 @@ export class ForceVerifyCommand extends Command {
 					this.container.logger.error(error);
 				}
 			}
-			const embed = new EmbedBuilder()
-				.setColor(0x57f287)
-				.setTitle('Cuenta vinculada forzosamente')
-				.setDescription(`Se vinculó **${account.gameName}#${account.tagLine}** a ${user}.`);
-			if (!roleAssigned) {
-				embed.addFields({ name: 'Rol de región', value: 'No se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.' });
-			}
-			if (soloRank && !eloRoleAssigned) {
-				embed.addFields({ name: 'Rol de elo', value: 'No se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.' });
-			}
-			return interaction.editReply({ embeds: [embed] });
+			const lines = [`Se vinculó **${account.gameName}#${account.tagLine}** a ${user}.`];
+			if (!roleAssigned) lines.push('**Rol de región:** no se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.');
+			if (soloRank && !eloRoleAssigned) lines.push('**Rol de elo:** no se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.');
+			return interaction.editReply(noticeMessage('success', lines.join('\n'), 'Cuenta vinculada forzosamente'));
 		} catch (error) {
 			this.container.logger.error(error);
 			if (error instanceof InvalidRiotIdError) {
-				return interaction.editReply('El Riot ID debe tener el formato `Nombre#TAG` y respetar los límites de longitud.');
+				return interaction.editReply(
+					noticeMessage('error', 'El Riot ID debe tener el formato `Nombre#TAG` y respetar los límites de longitud.')
+				);
 			}
-			if (error instanceof RiotApiError) return interaction.editReply(riotErrorMessage(error));
-			return interaction.editReply('No pude completar la vinculación forzada. Revisá los logs para más detalles.');
+			if (error instanceof RiotApiError) return interaction.editReply(noticeMessage('error', riotErrorMessage(error)));
+			return interaction.editReply(noticeMessage('error', 'No pude completar la vinculación forzada. Revisá los logs para más detalles.'));
 		}
 	}
 

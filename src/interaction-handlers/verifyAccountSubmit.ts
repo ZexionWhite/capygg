@@ -1,13 +1,14 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
-import { ModalSubmitInteraction } from 'discord.js';
-import { FORM_FIELD_IDS, INTERACTION_IDS, PROFILE_ICON_CANDIDATES, REGIONS } from '../lib/constants';
-import { buildChallengeComponents, buildChallengeEmbed } from '../lib/embeds/verification';
+import { MessageFlags, ModalSubmitInteraction } from 'discord.js';
+import { FORM_FIELD_IDS, INTERACTION_IDS, PROFILE_ICON_CANDIDATES, REGIONS, VERIFICATION } from '../lib/constants';
+import { buildChallengeMessage } from '../lib/embeds/verification';
 import { RiotApiError, riotClient } from '../lib/riot/client';
 import { riotErrorMessage } from '../lib/riot/messages';
 import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
 import { isRegion } from '../lib/types';
 import type { Region } from '../lib/types';
+import { noticeMessage, v2 } from '../lib/ui';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.ModalSubmit
@@ -18,14 +19,15 @@ export class VerifyAccountSubmitHandler extends InteractionHandler {
 	}
 
 	public override async run(interaction: ModalSubmitInteraction) {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		try {
-			if (!interaction.guildId) return interaction.editReply('La verificación solo puede ejecutarse dentro de un servidor.');
+			if (!interaction.guildId)
+				return interaction.editReply(noticeMessage('error', 'La verificación solo puede ejecutarse dentro de un servidor.'));
 			const { gameName, tagLine } = parseRiotId(interaction.fields.getTextInputValue(FORM_FIELD_IDS.riotId));
 			const regionValue = interaction.fields.getTextInputValue(FORM_FIELD_IDS.region).trim().toUpperCase();
 			if (!isRegion(regionValue)) {
-				return interaction.editReply(`Región inválida. Usá una de estas: ${Object.keys(REGIONS).join(', ')}.`);
+				return interaction.editReply(noticeMessage('error', `Región inválida. Usá una de estas: ${Object.keys(REGIONS).join(', ')}.`));
 			}
 			const region: Region = regionValue;
 			const account = await riotClient.getAccountByRiotId(gameName, tagLine, region);
@@ -33,16 +35,16 @@ export class VerifyAccountSubmitHandler extends InteractionHandler {
 
 			const linkedAccount = await this.container.prisma.riotAccount.findUnique({ where: { puuid: account.puuid } });
 			if (linkedAccount && linkedAccount.discordId !== interaction.user.id) {
-				return interaction.editReply('Esta cuenta de Riot ya está vinculada a otro usuario de Discord.');
+				return interaction.editReply(noticeMessage('error', 'Esta cuenta de Riot ya está vinculada a otro usuario de Discord.'));
 			}
 
 			const requiredIconId = this.chooseIcon(summoner.profileIconId);
-			const expiresAt = new Date(Date.now() + 11 * 60 * 1_000);
+			const expiresAt = new Date(Date.now() + VERIFICATION.challengeTtlMs);
 			await this.container.prisma.verificationChallenge.deleteMany({ where: { discordId: interaction.user.id } });
 			const challenge = await this.container.prisma.verificationChallenge.create({
 				data: {
 					discordId: interaction.user.id,
-					guildId: interaction.guildId ?? '',
+					guildId: interaction.guildId,
 					puuid: account.puuid,
 					gameName: account.gameName,
 					tagLine: account.tagLine,
@@ -52,17 +54,16 @@ export class VerifyAccountSubmitHandler extends InteractionHandler {
 				}
 			});
 
-			return interaction.editReply({
-				embeds: [buildChallengeEmbed(account.gameName, account.tagLine, requiredIconId, expiresAt)],
-				components: [buildChallengeComponents(challenge.id)]
-			});
+			return interaction.editReply(v2(buildChallengeMessage(challenge.id, account.gameName, account.tagLine, requiredIconId, expiresAt)));
 		} catch (error) {
 			this.container.logger.error(error);
 			if (error instanceof InvalidRiotIdError) {
-				return interaction.editReply('El Riot ID debe tener el formato `Nombre#TAG` y respetar los límites de longitud.');
+				return interaction.editReply(
+					noticeMessage('error', 'El Riot ID debe tener el formato `Nombre#TAG` y respetar los límites de longitud.')
+				);
 			}
-			if (error instanceof RiotApiError) return interaction.editReply(riotErrorMessage(error));
-			return interaction.editReply('No pude crear el desafío de verificación. Intentá nuevamente más tarde.');
+			if (error instanceof RiotApiError) return interaction.editReply(noticeMessage('error', riotErrorMessage(error)));
+			return interaction.editReply(noticeMessage('error', 'No pude crear el desafío de verificación. Intentá nuevamente más tarde.'));
 		}
 	}
 

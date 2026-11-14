@@ -13,7 +13,8 @@ export const ELO_TIERS = {
 	DIAMOND: { color: '#55A8D8' },
 	MASTER: { color: '#B78AE8' },
 	GRANDMASTER: { color: '#E5A1C8' },
-	CHALLENGER: { color: '#E34D4D' }
+	CHALLENGER: { color: '#E34D4D' },
+	UNRANKED: { color: '#8C9299' }
 } as const;
 
 export const REGIONS = {
@@ -37,8 +38,9 @@ export const QUEUES = {
 export const INTERACTION_IDS = {
 	verifyStart: 'verify:start',
 	verifyReport: 'verify:report',
+	verifyReportDmPrefix: 'verify:report-dm:',
 	verifyAccountModal: 'verify:account',
-	verifyReportModal: 'verify:report-modal',
+	verifyReportModalPrefix: 'verify:report-modal:',
 	verifyCheckPrefix: 'verify:check:',
 	verifyCancelPrefix: 'verify:cancel:'
 } as const;
@@ -54,3 +56,14 @@ export const FORM_FIELD_IDS = {
 export const PROFILE_ICON_CANDIDATES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] as const;
 
 export const DATA_DRAGON_VERSION = '16.22.1';
+
+export const VERIFICATION = {
+	/** Tiempo que tiene el usuario para cambiar el icono y tocar el botón. */
+	challengeTtlMs: 15 * 60 * 1_000,
+	/** Espera entre cada comprobación contra Riot (la cache de Riot ronda los 5 minutos). */
+	checkDelayMs: 5 * 60 * 1_000,
+	/** Cantidad de comprobaciones antes de dar la verificación por fallida (5 y 10 minutos). */
+	maxAttempts: 2,
+	/** Cada cuánto el bot revisa si hay comprobaciones pendientes. */
+	pollIntervalMs: 30 * 1_000
+} as const;

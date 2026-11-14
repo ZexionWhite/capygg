@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import sharp from 'sharp';
 import { DATA_DRAGON_VERSION } from '../constants';
 import type { RiotLeagueEntry, RiotMatchSummary } from '../types/riot';
@@ -40,11 +42,20 @@ export async function renderProfileImage(data: ProfileRenderData): Promise<Buffe
 }
 
 async function rankImage(rank: RiotLeagueEntry | undefined): Promise<string | null> {
-	if (!rank) return null;
-	const emblemUrl = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-data/global/default/assets/ux/ranked-emblems/Rank=${encodeURIComponent(
-		rank.tier
-	)}.png`;
-	return (await imageDataUri(emblemUrl)) ?? buildRankFallbackIcon(rank.tier);
+	const fileName = rank ? `${rank.tier.toLowerCase()}.png` : 'unranked.png';
+	const filePath = join(process.cwd(), 'assets', 'lol', 'ranks', fileName);
+
+	try {
+		const image = await readFile(filePath);
+		const trimmedImage = await sharp(image)
+			.trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } })
+			.png()
+			.toBuffer();
+
+		return `data:image/png;base64,${trimmedImage.toString('base64')}`;
+	} catch {
+		return null;
+	}
 }
 
 async function imageDataUri(url: string): Promise<string | null> {
@@ -104,7 +115,10 @@ function buildSvg(
 
 function rankBlock(rank: RiotLeagueEntry | undefined, image: string | null, x: number, y: number, large: boolean): string {
 	if (!rank) {
-		return `<text x="${x}" y="${y + 56}" fill="#f3f5f7" font-family="Helvetica Neue,Arial,sans-serif" font-size="${large ? 52 : 30}" font-weight="700">UNRANKED</text>`;
+		const iconSize = large ? 118 : 76;
+		const textX = x + (large ? 142 : 96);
+		return `${image ? `<image href="${image}" x="${x}" y="${y - 12}" width="${iconSize}" height="${iconSize}" preserveAspectRatio="xMidYMid meet"/>` : ''}
+			<text x="${textX}" y="${y + (large ? 36 : 20)}" fill="#f3f5f7" font-family="Helvetica Neue,Arial,sans-serif" font-size="${large ? 44 : 27}" font-weight="700">UNRANKED</text>`;
 	}
 
 	const tier = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(rank.tier) ? rank.tier : `${rank.tier} ${rank.rank}`;
@@ -150,30 +164,6 @@ function queueLabel(queueId: number, gameMode: string): string {
 		1700: 'SWIFTPLAY'
 	};
 	return labels[queueId] ?? escapeXml(gameMode).toUpperCase();
-}
-
-function buildRankFallbackIcon(tier: string): string {
-	const colors: Record<string, string> = {
-		IRON: '#795548',
-		BRONZE: '#A8754C',
-		SILVER: '#A9B5C5',
-		GOLD: '#E5B83B',
-		PLATINUM: '#32B8A5',
-		EMERALD: '#20A878',
-		DIAMOND: '#55A8D8',
-		MASTER: '#B78AE8',
-		GRANDMASTER: '#E5A1C8',
-		CHALLENGER: '#E34D4D'
-	};
-	const color = colors[tier] ?? '#8f98a6';
-	const initials = tier.slice(0, 2);
-	const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
-		<path d="M80 10 143 43v74l-63 33-63-33V43z" fill="#101217" stroke="${color}" stroke-width="8"/>
-		<path d="m80 28 42 23v50l-42 22-42-22V51z" fill="${color}" opacity=".22"/>
-		<path d="m80 38 25 43-25 16-25-16z" fill="${color}"/>
-		<text x="80" y="126" text-anchor="middle" fill="#f3f5f7" font-family="Arial,sans-serif" font-size="22" font-weight="700">${initials}</text>
-	</svg>`;
-	return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
 function escapeXml(value: string): string {

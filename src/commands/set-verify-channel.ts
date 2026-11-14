@@ -3,14 +3,15 @@ import { Command } from '@sapphire/framework';
 import {
 	ApplicationCommandOptionType,
 	ChannelType,
-	EmbedBuilder,
+	MessageFlags,
 	PermissionFlagsBits,
 	TextChannel,
 	type Guild,
 	type GuildMember,
 	type Message
 } from 'discord.js';
-import { buildVerificationPanelComponents, buildVerificationPanelEmbed } from '../lib/embeds/verification';
+import { buildVerificationPanel } from '../lib/embeds/verification';
+import { noticeMessage, v2 } from '../lib/ui';
 
 @ApplyOptions<Command.Options>({
 	description: 'Configure the account verification channel',
@@ -42,29 +43,29 @@ export class SetVerifyChannelCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 		const guild = interaction.guild;
 		const verifyChannel = interaction.options.getChannel('canal', true);
 		const reportChannel = interaction.options.getChannel('canal_reportes');
 
 		if (!guild || verifyChannel.type !== ChannelType.GuildText || !(verifyChannel instanceof TextChannel)) {
-			return interaction.editReply('Este comando solo puede ejecutarse en un servidor y requiere un canal de texto.');
+			return interaction.editReply(noticeMessage('error', 'Este comando solo puede ejecutarse en un servidor y requiere un canal de texto.'));
 		}
 
 		if (reportChannel && (reportChannel.type !== ChannelType.GuildText || !(reportChannel instanceof TextChannel))) {
-			return interaction.editReply('El canal de reportes debe ser un canal de texto.');
+			return interaction.editReply(noticeMessage('error', 'El canal de reportes debe ser un canal de texto.'));
 		}
 
 		const botMember = guild.members.me;
-		if (!botMember) return interaction.editReply('No pude encontrar mi miembro dentro de este servidor.');
+		if (!botMember) return interaction.editReply(noticeMessage('error', 'No pude encontrar mi miembro dentro de este servidor.'));
 
 		const verifyPermissionError = this.getChannelPermissionError(verifyChannel, botMember);
-		if (verifyPermissionError) return interaction.editReply(verifyPermissionError);
+		if (verifyPermissionError) return interaction.editReply(noticeMessage('error', verifyPermissionError));
 
 		if (reportChannel) {
 			const reportPermissionError = this.getChannelPermissionError(reportChannel, botMember);
-			if (reportPermissionError) return interaction.editReply(`Canal de reportes: ${reportPermissionError}`);
+			if (reportPermissionError) return interaction.editReply(noticeMessage('error', `Canal de reportes: ${reportPermissionError}`));
 		}
 
 		try {
@@ -72,13 +73,11 @@ export class SetVerifyChannelCommand extends Command {
 			const oldMessage = existingGuild
 				? await this.fetchPreviousMessage(guild, existingGuild.verifyChannelId, existingGuild.verifyMessageId)
 				: null;
-			const panel = {
-				embeds: [buildVerificationPanelEmbed()],
-				components: [buildVerificationPanelComponents()]
-			};
+			const panel = v2(buildVerificationPanel());
 
 			let message: Message;
-			if (oldMessage?.channelId === verifyChannel.id) {
+			// Solo se edita el mensaje anterior si ya es Components V2; si era un embed viejo se reemplaza.
+			if (oldMessage?.channelId === verifyChannel.id && oldMessage.flags.has(MessageFlags.IsComponentsV2)) {
 				message = await oldMessage.edit(panel);
 			} else {
 				if (oldMessage) {
@@ -106,12 +105,13 @@ export class SetVerifyChannelCommand extends Command {
 				}
 			});
 
-			return interaction.editReply({
-				embeds: [new EmbedBuilder().setColor(0x57f287).setDescription(`Panel de verificación publicado en ${verifyChannel}.`)]
-			});
+			const reportLine = reportChannel ? `\nLos reportes llegarán a ${reportChannel}.` : '';
+			return interaction.editReply(
+				noticeMessage('success', `El panel de verificación quedó publicado en ${verifyChannel}.${reportLine}`, 'Panel publicado')
+			);
 		} catch (error) {
 			this.container.logger.error(error);
-			return interaction.editReply('No pude publicar el panel de verificación. Revisá los permisos y los logs.');
+			return interaction.editReply(noticeMessage('error', 'No pude publicar el panel de verificación. Revisá los permisos y los logs.'));
 		}
 	}
 
