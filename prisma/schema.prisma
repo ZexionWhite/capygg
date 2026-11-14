@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Guild {
+  id              String   @id
+  verifyChannelId String?
+  verifyMessageId String?
+  reportChannelId String?
+  createdAt       DateTime @default(now())
+}
+
+model GuildRole {
+  id      Int    @id @default(autoincrement())
+  guildId String
+  key     String
+  kind    String
+  roleId  String
+
+  @@unique([guildId, key])
+}
+
+model RiotAccount {
+  puuid          String   @id
+  discordId      String   @unique
+  gameName       String
+  tagLine        String
+  region         String
+  profileIconId  Int?
+  summonerLevel  Int?
+  linkedAt       DateTime @default(now())
+}
+
+model RankSnapshot {
+  id        Int      @id @default(autoincrement())
+  puuid     String
+  queue     String
+  tier      String
+  division  String
+  lp        Int
+  wins      Int
+  losses    Int
+  createdAt DateTime @default(now())
+}
+
+model VerificationChallenge {
+  id             Int      @id @default(autoincrement())
+  discordId      String
+  guildId        String
+  puuid          String
+  gameName       String
+  tagLine        String
+  region         String
+  requiredIconId Int
+  expiresAt      DateTime
+  startedAt      DateTime?
+  nextCheckAt    DateTime?
+  attempts       Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model ErrorReport {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  discordId   String
+  category    String
+  description String
+  reference   String?
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id             Int      @id @default(autoincrement())
+  guildId        String
+  actorDiscordId String
+  action         String
+  details        String
+  createdAt      DateTime @default(now())
+}

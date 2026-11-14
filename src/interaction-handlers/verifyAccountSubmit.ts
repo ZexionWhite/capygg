@@ -1,0 +1,73 @@
+import { ApplyOptions } from '@sapphire/decorators';
+import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
+import { ModalSubmitInteraction } from 'discord.js';
+import { FORM_FIELD_IDS, INTERACTION_IDS, PROFILE_ICON_CANDIDATES, REGIONS } from '../lib/constants';
+import { buildChallengeComponents, buildChallengeEmbed } from '../lib/embeds/verification';
+import { RiotApiError, riotClient } from '../lib/riot/client';
+import { riotErrorMessage } from '../lib/riot/messages';
+import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
+import { isRegion } from '../lib/types';
+import type { Region } from '../lib/types';
+
+@ApplyOptions<InteractionHandler.Options>({
+	interactionHandlerType: InteractionHandlerTypes.ModalSubmit
+})
+export class VerifyAccountSubmitHandler extends InteractionHandler {
+	public override parse(interaction: ModalSubmitInteraction) {
+		return interaction.customId === INTERACTION_IDS.verifyAccountModal ? this.some() : this.none();
+	}
+
+	public override async run(interaction: ModalSubmitInteraction) {
+		await interaction.deferReply({ ephemeral: true });
+
+		try {
+			if (!interaction.guildId) return interaction.editReply('La verificación solo puede ejecutarse dentro de un servidor.');
+			const { gameName, tagLine } = parseRiotId(interaction.fields.getTextInputValue(FORM_FIELD_IDS.riotId));
+			const regionValue = interaction.fields.getTextInputValue(FORM_FIELD_IDS.region).trim().toUpperCase();
+			if (!isRegion(regionValue)) {
+				return interaction.editReply(`Región inválida. Usá una de estas: ${Object.keys(REGIONS).join(', ')}.`);
+			}
+			const region: Region = regionValue;
+			const account = await riotClient.getAccountByRiotId(gameName, tagLine, region);
+			const summoner = await riotClient.getSummonerByPuuid(account.puuid, region);
+
+			const linkedAccount = await this.container.prisma.riotAccount.findUnique({ where: { puuid: account.puuid } });
+			if (linkedAccount && linkedAccount.discordId !== interaction.user.id) {
+				return interaction.editReply('Esta cuenta de Riot ya está vinculada a otro usuario de Discord.');
+			}
+
+			const requiredIconId = this.chooseIcon(summoner.profileIconId);
+			const expiresAt = new Date(Date.now() + 11 * 60 * 1_000);
+			await this.container.prisma.verificationChallenge.deleteMany({ where: { discordId: interaction.user.id } });
+			const challenge = await this.container.prisma.verificationChallenge.create({
+				data: {
+					discordId: interaction.user.id,
+					guildId: interaction.guildId ?? '',
+					puuid: account.puuid,
+					gameName: account.gameName,
+					tagLine: account.tagLine,
+					region,
+					requiredIconId,
+					expiresAt
+				}
+			});
+
+			return interaction.editReply({
+				embeds: [buildChallengeEmbed(account.gameName, account.tagLine, requiredIconId, expiresAt)],
+				components: [buildChallengeComponents(challenge.id)]
+			});
+		} catch (error) {
+			this.container.logger.error(error);
+			if (error instanceof InvalidRiotIdError) {
+				return interaction.editReply('El Riot ID debe tener el formato `Nombre#TAG` y respetar los límites de longitud.');
+			}
+			if (error instanceof RiotApiError) return interaction.editReply(riotErrorMessage(error));
+			return interaction.editReply('No pude crear el desafío de verificación. Intentá nuevamente más tarde.');
+		}
+	}
+
+	private chooseIcon(currentIconId: number): number {
+		const available = PROFILE_ICON_CANDIDATES.filter((iconId) => iconId !== currentIconId);
+		return available[Math.floor(Math.random() * available.length)] ?? PROFILE_ICON_CANDIDATES[0];
+	}
+}

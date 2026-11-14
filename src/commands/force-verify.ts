@@ -1,0 +1,170 @@
+import { ApplyOptions } from '@sapphire/decorators';
+import { Command } from '@sapphire/framework';
+import { ApplicationCommandOptionType, EmbedBuilder, PermissionFlagsBits, type Guild, type GuildMember } from 'discord.js';
+import { QUEUES, REGIONS } from '../lib/constants';
+import { RiotApiError, riotClient } from '../lib/riot/client';
+import { riotErrorMessage } from '../lib/riot/messages';
+import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
+import { isEloTier, isRegion } from '../lib/types';
+import type { Region } from '../lib/types';
+
+const regionChoices = Object.keys(REGIONS).map((region) => ({ name: region, value: region }));
+
+@ApplyOptions<Command.Options>({
+	description: 'Force link a member League of Legends account',
+	requiredUserPermissions: PermissionFlagsBits.Administrator
+})
+export class ForceVerifyCommand extends Command {
+	public override registerApplicationCommands(registry: Command.Registry) {
+		registry.registerChatInputCommand({
+			name: this.name,
+			description: this.description,
+			defaultMemberPermissions: PermissionFlagsBits.Administrator,
+			options: [
+				{
+					name: 'usuario',
+					description: 'Miembro al que se vinculará la cuenta',
+					type: ApplicationCommandOptionType.User,
+					required: true
+				},
+				{
+					name: 'riot_id',
+					description: 'Riot ID con formato Nombre#TAG',
+					type: ApplicationCommandOptionType.String,
+					required: true
+				},
+				{
+					name: 'region',
+					description: 'Región de la cuenta',
+					type: ApplicationCommandOptionType.String,
+					required: true,
+					choices: regionChoices
+				}
+			]
+		});
+	}
+
+	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
+		await interaction.deferReply({ ephemeral: true });
+
+		try {
+			if (!interaction.guild) return interaction.editReply('Este comando solo puede ejecutarse dentro de un servidor.');
+			const user = interaction.options.getUser('usuario', true);
+			let member: GuildMember;
+			try {
+				member = await interaction.guild.members.fetch(user.id);
+			} catch (error) {
+				this.container.logger.error(error);
+				return interaction.editReply('No pude encontrar ese miembro dentro del servidor.');
+			}
+			if (!member) return interaction.editReply('El usuario seleccionado no pertenece a este servidor.');
+
+			const { gameName, tagLine } = parseRiotId(interaction.options.getString('riot_id', true));
+			const regionValue = interaction.options.getString('region', true).toUpperCase();
+			if (!isRegion(regionValue)) return interaction.editReply(`Región inválida. Usá una de estas: ${Object.keys(REGIONS).join(', ')}.`);
+			const region: Region = regionValue;
+
+			const account = await riotClient.getAccountByRiotId(gameName, tagLine, region);
+			const summoner = await riotClient.getSummonerByPuuid(account.puuid, region);
+			const linkedAccount = await this.container.prisma.riotAccount.findUnique({ where: { puuid: account.puuid } });
+			if (linkedAccount && linkedAccount.discordId !== user.id) {
+				return interaction.editReply('Esa cuenta de Riot ya está vinculada a otro usuario. Usá `/force-unlink` primero si corresponde.');
+			}
+
+			const previousAccount = await this.container.prisma.riotAccount.findUnique({ where: { discordId: user.id } });
+			await this.container.prisma.$transaction(async (transaction) => {
+				await transaction.verificationChallenge.deleteMany({ where: { discordId: user.id } });
+				await transaction.riotAccount.deleteMany({ where: { discordId: user.id } });
+				await transaction.riotAccount.create({
+					data: {
+						puuid: account.puuid,
+						discordId: user.id,
+						gameName: account.gameName,
+						tagLine: account.tagLine,
+						region,
+						profileIconId: summoner.profileIconId,
+						summonerLevel: summoner.summonerLevel
+					}
+				});
+			});
+
+			if (previousAccount && previousAccount.region !== region) {
+				try {
+					await this.removeRegionRole(interaction.guild, member, previousAccount.region);
+				} catch (error) {
+					this.container.logger.error(error);
+				}
+			}
+			let roleAssigned = false;
+			try {
+				roleAssigned = await this.assignRegionRole(interaction.guild, member, region);
+			} catch (error) {
+				this.container.logger.error(error);
+			}
+			let eloRoleAssigned = false;
+			let soloRank;
+			try {
+				soloRank = (await riotClient.getLeagueEntriesByPuuid(account.puuid, region)).find((entry) => entry.queueType === QUEUES.SOLO);
+			} catch (error) {
+				this.container.logger.error(error);
+			}
+			if (soloRank && isEloTier(soloRank.tier)) {
+				try {
+					eloRoleAssigned = await this.assignEloRole(interaction.guild, member, soloRank.tier);
+				} catch (error) {
+					this.container.logger.error(error);
+				}
+			}
+			const embed = new EmbedBuilder()
+				.setColor(0x57f287)
+				.setTitle('Cuenta vinculada forzosamente')
+				.setDescription(`Se vinculó **${account.gameName}#${account.tagLine}** a ${user}.`);
+			if (!roleAssigned) {
+				embed.addFields({ name: 'Rol de región', value: 'No se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.' });
+			}
+			if (soloRank && !eloRoleAssigned) {
+				embed.addFields({ name: 'Rol de elo', value: 'No se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.' });
+			}
+			return interaction.editReply({ embeds: [embed] });
+		} catch (error) {
+			this.container.logger.error(error);
+			if (error instanceof InvalidRiotIdError) {
+				return interaction.editReply('El Riot ID debe tener el formato `Nombre#TAG` y respetar los límites de longitud.');
+			}
+			if (error instanceof RiotApiError) return interaction.editReply(riotErrorMessage(error));
+			return interaction.editReply('No pude completar la vinculación forzada. Revisá los logs para más detalles.');
+		}
+	}
+
+	private async removeRegionRole(guild: Guild, member: GuildMember, value: string) {
+		if (!isRegion(value)) return;
+		const storedRole = await this.container.prisma.guildRole.findUnique({
+			where: { guildId_key: { guildId: guild.id, key: value } }
+		});
+		if (!storedRole) return;
+		const role = await guild.roles.fetch(storedRole.roleId);
+		if (role) await member.roles.remove(role);
+	}
+
+	private async assignRegionRole(guild: Guild, member: GuildMember, region: Region): Promise<boolean> {
+		const storedRole = await this.container.prisma.guildRole.findUnique({
+			where: { guildId_key: { guildId: guild.id, key: region } }
+		});
+		if (!storedRole) return false;
+		const role = await guild.roles.fetch(storedRole.roleId);
+		if (!role) return false;
+		await member.roles.add(role);
+		return true;
+	}
+
+	private async assignEloRole(guild: Guild, member: GuildMember, tier: string): Promise<boolean> {
+		const storedRole = await this.container.prisma.guildRole.findUnique({
+			where: { guildId_key: { guildId: guild.id, key: tier } }
+		});
+		if (!storedRole) return false;
+		const role = await guild.roles.fetch(storedRole.roleId);
+		if (!role) return false;
+		await member.roles.add(role);
+		return true;
+	}
+}
