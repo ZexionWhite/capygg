@@ -4,17 +4,17 @@ export const rootDir = join(__dirname, '..', '..');
 export const srcDir = join(rootDir, 'src');
 
 export const ELO_TIERS = {
-	IRON: { color: '#795548' },
-	BRONZE: { color: '#A8754C' },
-	SILVER: { color: '#A9B5C5' },
-	GOLD: { color: '#E5B83B' },
-	PLATINUM: { color: '#32B8A5' },
-	EMERALD: { color: '#20A878' },
-	DIAMOND: { color: '#55A8D8' },
-	MASTER: { color: '#B78AE8' },
-	GRANDMASTER: { color: '#E5A1C8' },
-	CHALLENGER: { color: '#E34D4D' },
-	UNRANKED: { color: '#8C9299' }
+	Challenger: { color: '#55B9DC' },
+	GrandMaster: { color: '#D94D42' },
+	Master: { color: '#B45BDF' },
+	Diamond: { color: '#55A8D8' },
+	Emerald: { color: '#20A878' },
+	Platinum: { color: '#32B8A5' },
+	Gold: { color: '#E5B83B' },
+	Silver: { color: '#A9B5C5' },
+	Bronze: { color: '#A8754C' },
+	Iron: { color: '#795548' },
+	Unraked: { color: '#737B83' }
 } as const;
 
 export const REGIONS = {

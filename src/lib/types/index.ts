@@ -9,5 +9,15 @@ export function isRegion(value: string): value is Region {
 }
 
 export function isEloTier(value: string): value is EloTier {
-	return Object.hasOwn(ELO_TIERS, value);
+    return Object.keys(ELO_TIERS).some(
+        tier => tier.toUpperCase() === value.toUpperCase()
+    );
+}
+
+export function normalizeEloTier(value: string): EloTier | null {
+    const tier = Object.keys(ELO_TIERS).find(
+        key => key.toUpperCase() === value.toUpperCase()
+    );
+
+    return tier as EloTier | undefined ?? null;
 }
