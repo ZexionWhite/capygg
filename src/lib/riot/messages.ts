@@ -14,5 +14,7 @@ export function riotErrorMessage(error: unknown): string {
 			return 'La API de Riot no está disponible en este momento. Intentá nuevamente más tarde.';
 		case 'UNKNOWN':
 			return 'Riot devolvió una respuesta inesperada. Intentá nuevamente más tarde.';
+		case 'INVALID_PUUID':
+			return 'No pude actualizar los datos de esa cuenta. Si cambió su Riot ID, hay que volver a vincularla.';
 	}
 }

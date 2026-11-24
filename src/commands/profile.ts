@@ -9,6 +9,7 @@ import { isRegion } from '../lib/types';
 import type { Region } from '../lib/types';
 import type { RiotLeagueEntry, RiotMatchSummary } from '../lib/types/riot';
 import { noticeMessage } from '../lib/ui';
+import { getSummonerRefreshingPuuid, syncRiotId } from '../lib/riot/account-sync';
 
 @ApplyOptions<Command.Options>({
 	description: 'Show a League of Legends profile'
@@ -34,12 +35,13 @@ export class ProfileCommand extends Command {
 
 		try {
 			const target = interaction.options.getUser('usuario') ?? interaction.user;
-			const account = await this.container.prisma.riotAccount.findUnique({ where: { discordId: target.id } });
-			if (!account) return interaction.editReply(noticeMessage('warning', `${target} no tiene una cuenta de League of Legends vinculada.`));
-			if (!isRegion(account.region)) return interaction.editReply(noticeMessage('error', 'La cuenta vinculada tiene una región inválida.'));
-			const region: Region = account.region;
+			const stored = await this.container.prisma.riotAccount.findUnique({ where: { discordId: target.id } });
+			if (!stored) return interaction.editReply(noticeMessage('warning', `${target} no tiene una cuenta de League of Legends vinculada.`));
+			if (!isRegion(stored.region)) return interaction.editReply(noticeMessage('error', 'La cuenta vinculada tiene una región inválida.'));
+			const region: Region = stored.region;
 
-			const summoner = await riotClient.getSummonerByPuuid(account.puuid, region);
+			const { account: linked, summoner } = await getSummonerRefreshingPuuid(stored, region);
+			const account = await syncRiotId(linked, region);
 			const [leagueEntries, tftEntries, matchIds, tftMatchIds] = await Promise.all([
 				riotClient.getLeagueEntriesByPuuid(account.puuid, region),
 				this.getTftEntries(account.puuid, region),
@@ -76,7 +78,7 @@ export class ProfileCommand extends Command {
 		try {
 			return await riotClient.getTftLeagueEntriesByPuuid(puuid, region);
 		} catch (error) {
-			if (error instanceof RiotApiError && error.kind === 'NOT_FOUND') return [];
+			if (this.isTftUnavailable(error)) return [];
 			throw error;
 		}
 	}
@@ -85,9 +87,14 @@ export class ProfileCommand extends Command {
 		try {
 			return await riotClient.getTftMatchIdsByPuuid(puuid, region, count);
 		} catch (error) {
-			if (error instanceof RiotApiError && error.kind === 'NOT_FOUND') return [];
+			if (this.isTftUnavailable(error)) return [];
 			throw error;
 		}
+	}
+
+	/** 404 = sin datos de TFT; 403 = la key no tiene acceso a TFT. En ambos casos el perfil sigue sin TFT. */
+	private isTftUnavailable(error: unknown): boolean {
+		return error instanceof RiotApiError && (error.kind === 'NOT_FOUND' || error.status === 403);
 	}
 
 	private async getRecentMatches(puuid: string, region: Region, matchIds: string[], tftMatchIds: string[]): Promise<RiotMatchSummary[]> {

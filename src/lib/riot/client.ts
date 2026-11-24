@@ -31,6 +31,17 @@ export class RiotClient {
 		return data;
 	}
 
+	public async getAccountByPuuid(puuid: string, region: Region): Promise<RiotAccountResponse> {
+		const route = REGIONS[region].regionalRoute;
+		const data = await this.request<unknown>(`https://${route}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuid)}`);
+
+		if (!this.isAccountResponse(data)) {
+			throw new RiotApiError('UNKNOWN', 'Riot returned an invalid account response.');
+		}
+
+		return data;
+	}
+
 	public async getSummonerByPuuid(puuid: string, region: Region): Promise<RiotSummonerResponse> {
 		const platform = REGIONS[region].platform;
 		const data = await this.request<unknown>(
@@ -153,7 +164,8 @@ export class RiotClient {
 					continue;
 				}
 
-				throw this.errorForStatus(response.status);
+				const body = await response.text().catch(() => '');
+				throw this.errorForStatus(response.status, body);
 			} catch (error) {
 				if (error instanceof RiotApiError) throw error;
 				if (error instanceof DOMException && error.name === 'AbortError') {
@@ -173,12 +185,15 @@ export class RiotClient {
 		if (milliseconds > 0) await new Promise((resolve) => setTimeout(resolve, milliseconds));
 	}
 
-	private errorForStatus(status: number): RiotApiError {
+	private errorForStatus(status: number, body = ''): RiotApiError {
+		if (status === 400 && /decrypt/i.test(body)) {
+			return new RiotApiError('INVALID_PUUID', 'Riot could not decrypt the PUUID (it was issued for another API key).', status);
+		}
 		if (status === 401 || status === 403) return new RiotApiError('KEY_INVALID_OR_EXPIRED', 'Riot API key rejected.', status);
 		if (status === 404) return new RiotApiError('NOT_FOUND', 'Riot account was not found.', status);
 		if (status === 429) return new RiotApiError('RATE_LIMITED', 'Riot API rate limit reached.', status);
 		if (status >= 500) return new RiotApiError('UNAVAILABLE', 'Riot API is unavailable.', status);
-		return new RiotApiError('UNKNOWN', `Riot API returned HTTP ${status}.`, status);
+		return new RiotApiError('UNKNOWN', `Riot API returned HTTP ${status}.${body ? ` Body: ${body.slice(0, 200)}` : ''}`, status);
 	}
 
 	private isAccountResponse(data: unknown): data is RiotAccountResponse {

@@ -1,4 +1,4 @@
-export type RiotApiErrorKind = 'NOT_FOUND' | 'RATE_LIMITED' | 'KEY_INVALID_OR_EXPIRED' | 'UNAVAILABLE' | 'UNKNOWN';
+export type RiotApiErrorKind = 'NOT_FOUND' | 'RATE_LIMITED' | 'KEY_INVALID_OR_EXPIRED' | 'INVALID_PUUID' | 'UNAVAILABLE' | 'UNKNOWN';
 
 export interface RiotAccountResponse {
 	puuid: string;
