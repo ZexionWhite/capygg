@@ -34,6 +34,10 @@ model RiotAccount {
   profileIconId  Int?
   summonerLevel  Int?
   linkedAt       DateTime @default(now())
+  masterySyncedAt DateTime?
+  matchesSyncedAt DateTime?
+  matchHistoryBackfilledAt DateTime?
+  championMasteries ChampionMastery[]
 }
 
 model RankSnapshot {
@@ -81,4 +85,77 @@ model AuditLog {
   action         String
   details        String
   createdAt      DateTime @default(now())
+}
+
+
+model ChampionMastery {
+  id                    Int         @id @default(autoincrement())
+  puuid                 String
+  championId            Int
+  championLevel         Int
+  championPoints        Int
+  lastPlayTime          DateTime?
+  championPointsSinceLevel Int
+  championPointsUntilNextLevel Int
+  tokensEarned          Int
+  chestGranted          Boolean?
+  updatedAt             DateTime    @updatedAt
+  account               RiotAccount @relation(fields: [puuid], references: [puuid], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([puuid, championId])
+  @@index([puuid, championPoints])
+  @@index([championId, championPoints])
+}
+
+model MatchRecord {
+  matchId             String              @id
+  region              String
+  queueId             Int
+  queueLabel          String
+  gameMode            String
+  gameType            String?
+  mapId               Int?
+  gameStartTimestamp  DateTime
+  gameDuration        Int
+  gameVersion         String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  participants        MatchParticipant[]
+
+  @@index([gameStartTimestamp])
+  @@index([queueId, gameStartTimestamp])
+}
+
+model MatchParticipant {
+  id             Int         @id @default(autoincrement())
+  matchId        String
+  puuid          String
+  summonerName   String?
+  riotIdGameName String?
+  riotIdTagLine  String?
+  championId     Int
+  championName   String
+  teamId         Int?
+  teamPosition   String?
+  individualPosition String?
+  win            Boolean
+  kills          Int
+  deaths         Int
+  assists        Int
+  champLevel     Int?
+  totalDamageDealtToChampions Int?
+  visionScore    Int?
+  item0          Int?
+  item1          Int?
+  item2          Int?
+  item3          Int?
+  item4          Int?
+  item5          Int?
+  item6          Int?
+  placement      Int?
+  match          MatchRecord @relation(fields: [matchId], references: [matchId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([matchId, puuid])
+  @@index([puuid, matchId])
+  @@index([puuid, championId])
 }

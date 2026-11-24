@@ -20,6 +20,7 @@ export async function refreshStoredPuuid(account: RiotAccount, region: Region): 
 
 	return container.prisma.$transaction(async (tx) => {
 		await tx.rankSnapshot.updateMany({ where: { puuid: account.puuid }, data: { puuid: fresh.puuid } });
+		await tx.matchParticipant.updateMany({ where: { puuid: account.puuid }, data: { puuid: fresh.puuid } });
 		return tx.riotAccount.update({
 			where: { puuid: account.puuid },
 			data: { puuid: fresh.puuid, gameName: fresh.gameName, tagLine: fresh.tagLine }

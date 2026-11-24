@@ -1,6 +1,14 @@
 import { REGIONS } from '../constants';
 import type { Region } from '../types';
-import type { RiotAccountResponse, RiotApiErrorKind, RiotLeagueEntry, RiotMatchSummary, RiotSummonerResponse } from '../types/riot';
+import type {
+	RiotAccountResponse,
+	RiotApiErrorKind,
+	RiotChampionMastery,
+	RiotLeagueEntry,
+	RiotMatchDetails,
+	RiotMatchSummary,
+	RiotSummonerResponse
+} from '../types/riot';
 import { createLogger } from '../logger';
 import { riotRateLimiter, riotRequestQueue } from './request-queue';
 import type { RiotRequestPriority } from './request-queue';
@@ -21,7 +29,12 @@ export class RiotApiError extends Error {
 export class RiotClient {
 	private readonly apiKey = process.env.RIOT_API_KEY;
 
-	public async getAccountByRiotId(gameName: string, tagLine: string, region: Region, priority: RiotRequestPriority = 'normal'): Promise<RiotAccountResponse> {
+	public async getAccountByRiotId(
+		gameName: string,
+		tagLine: string,
+		region: Region,
+		priority: RiotRequestPriority = 'normal'
+	): Promise<RiotAccountResponse> {
 		const route = REGIONS[region].regionalRoute;
 		const data = await this.request<unknown>(
 			`https://${route}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
@@ -37,7 +50,10 @@ export class RiotClient {
 
 	public async getAccountByPuuid(puuid: string, region: Region, priority: RiotRequestPriority = 'normal'): Promise<RiotAccountResponse> {
 		const route = REGIONS[region].regionalRoute;
-		const data = await this.request<unknown>(`https://${route}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuid)}`, priority);
+		const data = await this.request<unknown>(
+			`https://${route}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuid)}`,
+			priority
+		);
 
 		if (!this.isAccountResponse(data)) {
 			throw new RiotApiError('UNKNOWN', 'Riot returned an invalid account response.');
@@ -62,22 +78,66 @@ export class RiotClient {
 
 	public async getLeagueEntriesByPuuid(puuid: string, region: Region, priority: RiotRequestPriority = 'normal'): Promise<RiotLeagueEntry[]> {
 		const platform = REGIONS[region].platform;
-		const data = await this.request<unknown>(`https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`, priority);
+		const data = await this.request<unknown>(
+			`https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${encodeURIComponent(puuid)}`,
+			priority
+		);
 		if (!this.isLeagueEntriesResponse(data)) throw new RiotApiError('UNKNOWN', 'Riot returned an invalid League response.');
 		return data;
 	}
 
 	public async getTftLeagueEntriesByPuuid(puuid: string, region: Region, priority: RiotRequestPriority = 'normal'): Promise<RiotLeagueEntry[]> {
 		const platform = REGIONS[region].platform;
-		const data = await this.request<unknown>(`https://${platform}.api.riotgames.com/tft/league/v1/by-puuid/${encodeURIComponent(puuid)}`, priority);
+		const data = await this.request<unknown>(
+			`https://${platform}.api.riotgames.com/tft/league/v1/by-puuid/${encodeURIComponent(puuid)}`,
+			priority
+		);
 		if (!this.isLeagueEntriesResponse(data)) throw new RiotApiError('UNKNOWN', 'Riot returned an invalid TFT response.');
 		return data;
 	}
 
-	public async getMatchIdsByPuuid(puuid: string, region: Region, count = 5, priority: RiotRequestPriority = 'normal'): Promise<string[]> {
+	public async getChampionMasteriesByPuuid(
+		puuid: string,
+		region: Region,
+		priority: RiotRequestPriority = 'normal'
+	): Promise<RiotChampionMastery[]> {
+		const platform = REGIONS[region].platform;
+		const data = await this.request<unknown>(
+			`https://${platform}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${encodeURIComponent(puuid)}`,
+			priority
+		);
+		if (!Array.isArray(data)) {
+			logger.warn(`[riot] Champion Mastery response is not an array. Type: ${typeof data}`);
+			throw new RiotApiError('UNKNOWN', 'Riot returned an invalid Champion Mastery response.');
+		}
+
+		const invalidIndex = data.findIndex((entry) => !this.isChampionMastery(entry));
+
+		if (invalidIndex !== -1) {
+			const entry = data[invalidIndex];
+
+			const shape =
+				entry && typeof entry === 'object'
+					? Object.fromEntries(Object.entries(entry).map(([key, value]) => [key, typeof value]))
+					: { type: typeof entry };
+
+			logger.warn(`[riot] Invalid Champion Mastery entry at index ${invalidIndex}. Shape: ${JSON.stringify(shape)}`);
+
+			throw new RiotApiError('UNKNOWN', 'Riot returned an invalid Champion Mastery response.');
+		}
+		return data;
+	}
+
+	public async getMatchIdsByPuuid(
+		puuid: string,
+		region: Region,
+		count = 5,
+		priority: RiotRequestPriority = 'normal',
+		start = 0
+	): Promise<string[]> {
 		const route = REGIONS[region].regionalRoute;
 		const data = await this.request<unknown>(
-			`https://${route}.api.riotgames.com/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=0&count=${count}`,
+			`https://${route}.api.riotgames.com/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=${Math.max(0, Math.floor(start))}&count=${Math.min(100, Math.max(1, Math.floor(count)))}`,
 			priority
 		);
 		if (!Array.isArray(data) || !data.every((value): value is string => typeof value === 'string')) {
@@ -104,6 +164,27 @@ export class RiotClient {
 		};
 	}
 
+	public async getMatchDetails(matchId: string, region: Region, priority: RiotRequestPriority = 'normal'): Promise<RiotMatchDetails> {
+		const route = REGIONS[region].regionalRoute;
+		const data = await this.request<unknown>(`https://${route}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(matchId)}`, priority);
+
+		if (!this.isMatchResponse(data)) {
+			throw new RiotApiError('UNKNOWN', 'Riot returned an invalid match response.');
+		}
+
+		return {
+			matchId: data.metadata.matchId,
+			queueId: data.info.queueId,
+			gameMode: data.info.gameMode,
+			gameType: data.info.gameType,
+			mapId: data.info.mapId,
+			gameStartTimestamp: data.info.gameStartTimestamp,
+			gameDuration: data.info.gameDuration,
+			gameVersion: data.info.gameVersion,
+			participants: data.info.participants
+		};
+	}
+
 	public async getTftMatchIdsByPuuid(puuid: string, region: Region, count = 5, priority: RiotRequestPriority = 'normal'): Promise<string[]> {
 		const route = REGIONS[region].regionalRoute;
 		const data = await this.request<unknown>(
@@ -116,7 +197,12 @@ export class RiotClient {
 		return data;
 	}
 
-	public async getTftMatchById(matchId: string, puuid: string, region: Region, priority: RiotRequestPriority = 'normal'): Promise<RiotMatchSummary> {
+	public async getTftMatchById(
+		matchId: string,
+		puuid: string,
+		region: Region,
+		priority: RiotRequestPriority = 'normal'
+	): Promise<RiotMatchSummary> {
 		const route = REGIONS[region].regionalRoute;
 		const data = await this.request<unknown>(`https://${route}.api.riotgames.com/tft/match/v1/matches/${encodeURIComponent(matchId)}`, priority);
 		if (!this.isTftMatchResponse(data)) throw new RiotApiError('UNKNOWN', 'Riot returned an invalid TFT match response.');
@@ -179,7 +265,11 @@ export class RiotClient {
 						logger.warn(`GET ${endpoint} -> HTTP 429 (${duration}ms)${attempt === 0 ? ' · retrying after cooldown' : ''}.`);
 						await response.body?.cancel().catch(() => undefined);
 						if (attempt === 0) continue;
-						throw new RiotApiError('RATE_LIMITED', `Riot API rate limit reached${retryAfter === null ? '' : ` (retry after ${Math.ceil(retryAfter / 1_000)}s)`}.`, 429);
+						throw new RiotApiError(
+							'RATE_LIMITED',
+							`Riot API rate limit reached${retryAfter === null ? '' : ` (retry after ${Math.ceil(retryAfter / 1_000)}s)`}.`,
+							429
+						);
 					}
 
 					logger.debug(`GET ${endpoint} -> HTTP ${response.status} (${duration}ms).`);
@@ -229,6 +319,24 @@ export class RiotClient {
 		return new RiotApiError('UNKNOWN', `Riot API returned HTTP ${status}.${body ? ` Body: ${body.slice(0, 200)}` : ''}`, status);
 	}
 
+	private isChampionMastery(data: unknown): data is RiotChampionMastery {
+		if (!data || typeof data !== 'object') return false;
+
+		const value = data as Record<string, unknown>;
+
+		return (
+			typeof value.puuid === 'string' &&
+			typeof value.championId === 'number' &&
+			typeof value.championLevel === 'number' &&
+			typeof value.championPoints === 'number' &&
+			typeof value.lastPlayTime === 'number' &&
+			typeof value.championPointsSinceLastLevel === 'number' &&
+			typeof value.championPointsUntilNextLevel === 'number' &&
+			typeof value.tokensEarned === 'number' &&
+			(value.chestGranted === undefined || typeof value.chestGranted === 'boolean')
+		);
+	}
+
 	private isAccountResponse(data: unknown): data is RiotAccountResponse {
 		if (!data || typeof data !== 'object') return false;
 		const value = data as Record<string, unknown>;
@@ -264,6 +372,9 @@ export class RiotClient {
 		info: {
 			queueId: number;
 			gameMode: string;
+			gameType?: string;
+			mapId?: number;
+			gameVersion?: string;
 			gameStartTimestamp: number;
 			gameDuration: number;
 			participants: RiotMatchSummary['participant'][];

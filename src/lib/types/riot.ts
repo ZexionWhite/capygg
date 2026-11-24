@@ -21,15 +21,61 @@ export interface RiotLeagueEntry {
 	losses: number;
 }
 
+export interface RiotChampionMastery {
+	puuid: string;
+	championId: number;
+	championLevel: number;
+	championPoints: number;
+	lastPlayTime: number;
+	championPointsSinceLastLevel: number;
+	championPointsUntilNextLevel: number;
+	tokensEarned: number;
+	chestGranted?: boolean;
+
+	markRequiredForNextLevel?: number;
+	championSeasonMilestone?: number;
+	milestoneGrades?: unknown;
+	nextSeasonMilestone?: unknown;
+}
+
 export interface RiotMatchParticipant {
 	puuid: string;
 	championName: string;
+	championId?: number;
+	teamId?: number;
+	teamPosition?: string;
+	individualPosition?: string;
+	summonerName?: string;
+	riotIdGameName?: string;
+	riotIdTagline?: string;
+	champLevel?: number;
+	totalDamageDealtToChampions?: number;
+	visionScore?: number;
+	item0?: number;
+	item1?: number;
+	item2?: number;
+	item3?: number;
+	item4?: number;
+	item5?: number;
+	item6?: number;
 	win: boolean;
 	kills: number;
 	deaths: number;
 	assists: number;
 	placement?: number;
 	isTft?: boolean;
+}
+
+export interface RiotMatchDetails {
+	matchId: string;
+	queueId: number;
+	gameMode: string;
+	gameType?: string;
+	mapId?: number;
+	gameStartTimestamp: number;
+	gameDuration: number;
+	gameVersion?: string;
+	participants: RiotMatchParticipant[];
 }
 
 export interface RiotMatchSummary {

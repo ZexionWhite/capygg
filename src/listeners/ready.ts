@@ -5,12 +5,16 @@ import { blue, gray, green, magenta, magentaBright, white, yellow } from 'colore
 import { startVerificationWorker } from '../lib/verification/worker';
 import { migrateLegacyRoleKeys } from '../lib/roles';
 import { createLogger } from '../lib/logger';
+import { startRiotDataWorkers } from '../lib/riot/data-sync-worker';
 
 const logger = createLogger('roles');
 
 const dev = process.env.NODE_ENV !== 'production';
 
-@ApplyOptions<Listener.Options>({ once: true })
+@ApplyOptions<Listener.Options>({
+	once: true,
+	event: 'clientReady'
+})
 export class UserEvent extends Listener {
 	private readonly style = dev ? yellow : blue;
 
@@ -19,6 +23,7 @@ export class UserEvent extends Listener {
 		this.printStoreDebugInformation();
 		void migrateLegacyRoleKeys().catch((error) => logger.error('Failed to migrate legacy role keys.', error));
 		startVerificationWorker();
+		startRiotDataWorkers();
 	}
 
 	private printBanner() {
