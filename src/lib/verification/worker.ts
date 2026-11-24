@@ -73,7 +73,7 @@ async function processChallenge(challenge: VerificationChallenge): Promise<void>
 	let summoner: Awaited<ReturnType<typeof riotClient.getSummonerByPuuid>> | null = null;
 
 	try {
-		summoner = await riotClient.getSummonerByPuuid(challenge.puuid, region);
+		summoner = await riotClient.getSummonerByPuuid(challenge.puuid, region, 'critical');
 	} catch (error) {
 		logger.error('Error al consultar la cuenta de Riot.', error);
 		lastError = error;
@@ -131,7 +131,7 @@ async function completeVerification(challenge: VerificationChallenge, region: Re
 	let soloQueueFetched = false;
 
 	try {
-		const entries = await riotClient.getLeagueEntriesByPuuid(challenge.puuid, region);
+		const entries = await riotClient.getLeagueEntriesByPuuid(challenge.puuid, region, 'critical');
 		soloQueueFetched = true;
 
 		const riotTier = entries.find((entry) => entry.queueType === QUEUES.SOLO)?.tier;

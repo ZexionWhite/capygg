@@ -30,8 +30,8 @@ export class VerifyAccountSubmitHandler extends InteractionHandler {
 				return interaction.editReply(noticeMessage('error', `Región inválida. Usá una de estas: ${Object.keys(REGIONS).join(', ')}.`));
 			}
 			const region: Region = regionValue;
-			const account = await riotClient.getAccountByRiotId(gameName, tagLine, region);
-			const summoner = await riotClient.getSummonerByPuuid(account.puuid, region);
+			const account = await riotClient.getAccountByRiotId(gameName, tagLine, region, 'critical');
+			const summoner = await riotClient.getSummonerByPuuid(account.puuid, region, 'critical');
 
 			const linkedAccount = await this.container.prisma.riotAccount.findUnique({ where: { puuid: account.puuid } });
 			if (linkedAccount && linkedAccount.discordId !== interaction.user.id) {
