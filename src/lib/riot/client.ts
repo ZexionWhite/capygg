@@ -1,9 +1,10 @@
 import { REGIONS } from '../constants';
 import type { Region } from '../types';
 import type { RiotAccountResponse, RiotApiErrorKind, RiotLeagueEntry, RiotMatchSummary, RiotSummonerResponse } from '../types/riot';
+import { createLogger } from '../logger';
 
 const REQUEST_TIMEOUT_MS = 8_000;
-
+const logger = createLogger('riot');
 export class RiotApiError extends Error {
 	public constructor(
 		public readonly kind: RiotApiErrorKind,
@@ -141,10 +142,15 @@ export class RiotClient {
 			throw new RiotApiError('KEY_INVALID_OR_EXPIRED', 'RIOT_API_KEY is not configured.', 401);
 		}
 
+		const endpoint = this.endpointLabel(url);
+
 		for (let attempt = 0; attempt < 2; attempt++) {
+			const startedAt = Date.now();
+
 			try {
 				const controller = new AbortController();
 				const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
 				let response: Response;
 
 				try {
@@ -156,11 +162,25 @@ export class RiotClient {
 					clearTimeout(timeout);
 				}
 
-				if (response.ok) return (await response.json()) as T;
+				const duration = Date.now() - startedAt;
+
+				if (response.status === 429) {
+					logger.warn(`GET ${endpoint} -> HTTP 429 (${duration}ms)${attempt === 0 ? ' · retrying' : ''}.`);
+				} else {
+					logger.debug(`GET ${endpoint} -> HTTP ${response.status} (${duration}ms).`);
+				}
+
+				if (response.ok) {
+					return (await response.json()) as T;
+				}
 
 				const retryable = response.status === 429 || response.status >= 500;
+
 				if (retryable && attempt === 0) {
-					if (response.status === 429) await this.waitForRetry(response.headers.get('Retry-After'));
+					if (response.status === 429) {
+						await this.waitForRetry(response.headers.get('Retry-After'));
+					}
+
 					continue;
 				}
 
@@ -168,14 +188,29 @@ export class RiotClient {
 				throw this.errorForStatus(response.status, body);
 			} catch (error) {
 				if (error instanceof RiotApiError) throw error;
+
+				const duration = Date.now() - startedAt;
+
 				if (error instanceof DOMException && error.name === 'AbortError') {
+					logger.warn(`GET ${endpoint} timed out after ${duration}ms.`);
 					throw new RiotApiError('UNAVAILABLE', 'Riot request timed out.');
 				}
+
+				logger.warn(`GET ${endpoint} failed after ${duration}ms: ${String(error)}`);
+
 				throw new RiotApiError('UNAVAILABLE', 'Riot could not be reached.');
 			}
 		}
 
 		throw new RiotApiError('UNAVAILABLE', 'Riot request failed after retry.');
+	}
+
+	/** Removes player identifiers from request paths before writing them to logs. */
+	private endpointLabel(url: string): string {
+		return new URL(url).pathname
+			.replace(/\/by-riot-id\/[^/]+\/[^/]+/i, '/by-riot-id/:gameName/:tagLine')
+			.replace(/\/by-puuid\/[^/]+/i, '/by-puuid/:puuid')
+			.replace(/\/matches\/[^/]+/i, '/matches/:matchId');
 	}
 
 	private async waitForRetry(retryAfter: string | null): Promise<void> {

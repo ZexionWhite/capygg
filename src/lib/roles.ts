@@ -2,6 +2,9 @@ import { container } from '@sapphire/framework';
 import { DiscordAPIError, resolveColor, type Guild, type Role } from 'discord.js';
 import { ELO_TIERS, LEGACY_ROLE_KEYS, REGIONS } from './constants';
 import type { EloTier, Region } from './types';
+import { createLogger } from './logger';
+
+const logger = createLogger('roles');
 
 export type RoleKind = 'ELO' | 'REGION';
 
@@ -46,12 +49,12 @@ export async function migrateLegacyRoleKeys(): Promise<number> {
 			if (current) {
 				// Ya hay un rol registrado con la key nueva: gana ese y se descarta la fila vieja.
 				await container.prisma.guildRole.delete({ where: { id: row.id } });
-				container.logger.warn(
-					`[roles] ${row.guildId}: ya existía "${currentKey}", se descartó la fila vieja "${legacyKey}" (el rol ${row.roleId} queda sin gestionar).`
+				logger.warn(
+					`${row.guildId}: ya existía "${currentKey}", se descartó la fila vieja "${legacyKey}" (el rol ${row.roleId} queda sin gestionar).`
 				);
 			} else {
 				await container.prisma.guildRole.update({ where: { id: row.id }, data: { key: currentKey } });
-				container.logger.info(`[roles] ${row.guildId}: key "${legacyKey}" migrada a "${currentKey}" (rol ${row.roleId} conservado).`);
+				logger.info(`${row.guildId}: key "${legacyKey}" migrada a "${currentKey}" (rol ${row.roleId} conservado).`);
 			}
 			processed++;
 		}
@@ -100,7 +103,7 @@ async function alignRole(role: Role, definition: RoleDefinition): Promise<boolea
 	if (Object.keys(changes).length === 0) return false;
 
 	await role.edit({ ...changes, reason: 'CapyGG: sincronización de roles' });
-	container.logger.info(`[roles] ${role.guild.id}: rol ${role.id} actualizado (${Object.keys(changes).join(', ')}) -> "${definition.name}".`);
+	logger.info(`${role.guild.id}: rol ${role.id} actualizado (${Object.keys(changes).join(', ')}) -> "${definition.name}".`);
 	return true;
 }
 

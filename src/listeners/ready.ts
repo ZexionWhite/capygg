@@ -4,6 +4,9 @@ import type { StoreRegistryValue } from '@sapphire/pieces';
 import { blue, gray, green, magenta, magentaBright, white, yellow } from 'colorette';
 import { startVerificationWorker } from '../lib/verification/worker';
 import { migrateLegacyRoleKeys } from '../lib/roles';
+import { createLogger } from '../lib/logger';
+
+const logger = createLogger('roles');
 
 const dev = process.env.NODE_ENV !== 'production';
 
@@ -14,7 +17,7 @@ export class UserEvent extends Listener {
 	public override run() {
 		this.printBanner();
 		this.printStoreDebugInformation();
-		void migrateLegacyRoleKeys().catch((error) => this.container.logger.error(error));
+		void migrateLegacyRoleKeys().catch((error) => logger.error('Failed to migrate legacy role keys.', error));
 		startVerificationWorker();
 	}
 

@@ -3,6 +3,9 @@ import type { RiotAccount } from '../../generated/prisma/client';
 import type { Region } from '../types';
 import type { RiotSummonerResponse } from '../types/riot';
 import { RiotApiError, riotClient } from './client';
+import { createLogger } from '../logger';
+
+const logger = createLogger('riot.account-sync');
 
 /**
  * Los PUUID de Riot se cifran por API key: al cambiar de key, los guardados dejan de servir (HTTP 400).
@@ -35,7 +38,7 @@ export async function getSummonerRefreshingPuuid(
 	}
 
 	const refreshed = await refreshStoredPuuid(account, region);
-	container.logger.info(`PUUID actualizado para ${refreshed.gameName}#${refreshed.tagLine}`);
+	logger.info(`PUUID actualizado para ${refreshed.gameName}#${refreshed.tagLine}`);
 	return { account: refreshed, summoner: await riotClient.getSummonerByPuuid(refreshed.puuid, region) };
 }
 
@@ -52,13 +55,13 @@ export async function syncRiotId(account: RiotAccount, region: Region): Promise<
 		const current = await riotClient.getAccountByPuuid(account.puuid, region);
 		if (current.gameName === account.gameName && current.tagLine === account.tagLine) return account;
 
-		container.logger.info(`Riot ID actualizado: ${account.gameName}#${account.tagLine} -> ${current.gameName}#${current.tagLine}`);
+		logger.info(`Riot ID actualizado: ${account.gameName}#${account.tagLine} -> ${current.gameName}#${current.tagLine}`);
 		return await container.prisma.riotAccount.update({
 			where: { puuid: account.puuid },
 			data: { gameName: current.gameName, tagLine: current.tagLine }
 		});
 	} catch (error) {
-		container.logger.warn(`No pude sincronizar el Riot ID de ${account.gameName}#${account.tagLine}: ${String(error)}`);
+		logger.warn(`No pude sincronizar el Riot ID de ${account.gameName}#${account.tagLine}: ${String(error)}`);
 		return account;
 	}
 }

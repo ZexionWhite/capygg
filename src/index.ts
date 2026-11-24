@@ -1,3 +1,4 @@
+
 import './lib/setup';
 import './lib/container';
 
@@ -7,11 +8,28 @@ import { prisma } from './lib/prisma';
 
 container.prisma = prisma;
 
+const configuredLogLevel = (
+	process.env.LOG_LEVEL?.trim() ||
+	(process.env.NODE_ENV === 'production' ? 'info' : 'debug')
+).toLowerCase();
+
+const logLevels: Record<string, LogLevel> = {
+	trace: LogLevel.Trace,
+	debug: LogLevel.Debug,
+	info: LogLevel.Info,
+	warn: LogLevel.Warn,
+	error: LogLevel.Error,
+	fatal: LogLevel.Fatal,
+	none: LogLevel.None
+};
+
+const logLevel = logLevels[configuredLogLevel] ?? LogLevel.Info;
+
 const client = new SapphireClient({
 	defaultPrefix: '!',
 	caseInsensitiveCommands: true,
 	logger: {
-		level: LogLevel.Debug
+		level: logLevel
 	},
 	intents: [
 		GatewayIntentBits.DirectMessages,
@@ -25,7 +43,7 @@ const client = new SapphireClient({
 
 const main = async () => {
 	try {
-		client.logger.info('Logging in');
+		client.logger.info(`Logging in (LOG_LEVEL=${configuredLogLevel})`);
 		await client.login();
 		client.logger.info('logged in');
 	} catch (error) {
