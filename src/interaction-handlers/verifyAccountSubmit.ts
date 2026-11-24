@@ -1,6 +1,6 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
-import { MessageFlags, ModalSubmitInteraction } from 'discord.js';
+import { ActionRowBuilder, MessageFlags, ModalSubmitInteraction, StringSelectMenuBuilder } from 'discord.js';
 import { FORM_FIELD_IDS, INTERACTION_IDS, PROFILE_ICON_CANDIDATES, REGIONS, VERIFICATION } from '../lib/constants';
 import { buildChallengeMessage } from '../lib/embeds/verification';
 import { RiotApiError, riotClient } from '../lib/riot/client';
@@ -54,7 +54,23 @@ export class VerifyAccountSubmitHandler extends InteractionHandler {
 				}
 			});
 
-			return interaction.editReply(v2(buildChallengeMessage(challenge.id, account.gameName, account.tagLine, requiredIconId, expiresAt)));
+			const queueSelect = new StringSelectMenuBuilder()
+				.setCustomId(INTERACTION_IDS.verifyQueues)
+				.setPlaceholder('Elegí las colas que jugás')
+				.setMinValues(1)
+				.setMaxValues(4)
+				.addOptions(
+					{ label: 'SoloQ', value: 'SOLO' },
+					{ label: 'Flex', value: 'FLEX' },
+					{ label: 'Normals', value: 'NORMALS' },
+					{ label: 'ARAM (incluye Mayhem)', value: 'ARAM' }
+				);
+			await interaction.editReply(v2(buildChallengeMessage(challenge.id, account.gameName, account.tagLine, requiredIconId, expiresAt)));
+			return interaction.followUp({
+				content: '**¿Qué jugás?** Elegí todas las colas que correspondan. Podés seleccionar las cuatro.',
+				components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(queueSelect)],
+				flags: MessageFlags.Ephemeral
+			});
 		} catch (error) {
 			this.container.logger.error(error);
 			if (error instanceof InvalidRiotIdError) {

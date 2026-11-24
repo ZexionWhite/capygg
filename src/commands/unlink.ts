@@ -4,6 +4,7 @@ import { MessageFlags, type GuildMember } from 'discord.js';
 import { ELO_TIERS } from '../lib/constants';
 import { isEloTier, isRegion } from '../lib/types';
 import { noticeMessage } from '../lib/ui';
+import { removeManagedPlayerRoles } from '../lib/roles';
 
 @ApplyOptions<Command.Options>({
 	description: 'Unlink your League of Legends account'
@@ -38,6 +39,8 @@ export class UnlinkCommand extends Command {
 					.map((tier) => this.removeStoredRole(guild, member, tier))
 			);
 			const eloRoleCount = eloRolesRemoved.filter(Boolean).length;
+			await removeManagedPlayerRoles(guild, member);
+			await this.container.prisma.playerGuildPreference.deleteMany({ where: { guildId: guild.id, discordId: interaction.user.id } });
 			const lines = [`Se desvinculó **${account.gameName}#${account.tagLine}** correctamente.`];
 			if (!regionRoleRemoved) lines.push('**Rol de región:** no se encontró o no se pudo quitar.');
 			lines.push(`**Roles de elo:** se quitaron ${eloRoleCount} rol${eloRoleCount === 1 ? '' : 'es'}.`);

@@ -10,6 +10,7 @@ import type { Region } from '../types';
 import { noticeMessage, v2 } from '../ui';
 import { createLogger } from '../logger';
 import { scheduleCronJob } from '../scheduler';
+import { syncQueuePreferenceRoles } from '../roles';
 
 const logger = createLogger('verification');
 let workerStarted = false;
@@ -158,6 +159,7 @@ async function completeVerification(challenge: VerificationChallenge, region: Re
 	const guild = await fetchGuild(challenge.guildId);
 
 	const roleAssigned = guild ? await assignStoredRole(guild, challenge.discordId, region) : false;
+	if (guild) await syncQueuePreferenceRoles(guild, challenge.discordId);
 
 	const eloRole =
 		soloQueueFetched && soloTier

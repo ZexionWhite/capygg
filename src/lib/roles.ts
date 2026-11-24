@@ -6,7 +6,7 @@ import { createLogger } from './logger';
 
 const logger = createLogger('roles');
 
-export type RoleKind = 'ELO' | 'REGION';
+export type RoleKind = 'ELO' | 'REGION' | 'LANE' | 'QUEUE' | 'SPECIAL' | 'DISTINCTION';
 
 export interface RoleDefinition {
 	/** Identificador estable guardado en la base. Si se cambia, hay que registrar el cambio en LEGACY_ROLE_KEYS. */
@@ -26,8 +26,28 @@ export function roleDefinitions(): RoleDefinition[] {
 		(tier): RoleDefinition => ({ key: tier, kind: 'ELO', name: tier, color: resolveColor(ELO_TIERS[tier].color) })
 	);
 	const regions = (Object.keys(REGIONS) as Region[]).map((region): RoleDefinition => ({ key: region, kind: 'REGION', name: region, color: null }));
+	const lanes: RoleDefinition[] = [
+		{ key: 'LANE_TOP', kind: 'LANE', name: 'Top', color: null },
+		{ key: 'LANE_JUNGLE', kind: 'LANE', name: 'Jungle', color: null },
+		{ key: 'LANE_MID', kind: 'LANE', name: 'Mid', color: null },
+		{ key: 'LANE_ADC', kind: 'LANE', name: 'ADC', color: null },
+		{ key: 'LANE_SUPPORT', kind: 'LANE', name: 'Support', color: null }
+	];
+	const queues: RoleDefinition[] = [
+		{ key: 'QUEUE_SOLO', kind: 'QUEUE', name: 'SoloQ', color: null },
+		{ key: 'QUEUE_FLEX', kind: 'QUEUE', name: 'Flex', color: null },
+		{ key: 'QUEUE_NORMALS', kind: 'QUEUE', name: 'Normals', color: null },
+		{ key: 'QUEUE_ARAM', kind: 'QUEUE', name: 'ARAM', color: null }
+	];
+	const distinctions: RoleDefinition[] = [
+		{ key: 'OTP', kind: 'SPECIAL', name: 'OTP', color: null },
+		{ key: 'DIST_MAIN', kind: 'DISTINCTION', name: 'Main', color: null },
+		{ key: 'DIST_ARAM_PLAYER', kind: 'DISTINCTION', name: 'ARAM Player', color: null },
+		{ key: 'DIST_ARAM_MAYHEM_ENJOYER', kind: 'DISTINCTION', name: 'ARAM Mayhem Enjoyer', color: null },
+		{ key: 'DIST_SOLOQ_ABUSER', kind: 'DISTINCTION', name: 'SoloQ Abuser', color: null }
+	];
 
-	return [...elo, ...regions];
+	return [...elo, ...regions, ...lanes, ...queues, ...distinctions];
 }
 
 /**
@@ -113,5 +133,47 @@ async function fetchRole(guild: Guild, roleId: string): Promise<Role | null> {
 	} catch (error) {
 		if (error instanceof DiscordAPIError && error.code === 10011) return null;
 		throw error;
+	}
+}
+
+/** Removes every role managed by CapyGG from a member when their Riot account is unlinked. */
+export async function removeManagedPlayerRoles(guild: Guild, member: import('discord.js').GuildMember): Promise<number> {
+	const storedRoles = await container.prisma.guildRole.findMany({
+		where: { guildId: guild.id, kind: { in: ['ELO', 'REGION', 'LANE', 'QUEUE', 'SPECIAL', 'DISTINCTION'] } }
+	});
+	let removed = 0;
+	for (const stored of storedRoles) {
+		const role = await fetchRole(guild, stored.roleId);
+		if (!role || !member.roles.cache.has(role.id)) continue;
+		await member.roles.remove(role);
+		removed++;
+	}
+	return removed;
+}
+
+
+/** Applies the player's saved queue preferences after their Riot account has been verified. */
+export async function syncQueuePreferenceRoles(guild: Guild, discordId: string): Promise<void> {
+	const preference = await container.prisma.playerGuildPreference.findUnique({
+		where: { guildId_discordId: { guildId: guild.id, discordId } }
+	});
+	if (!preference) return;
+
+	const desired: Record<string, boolean> = {
+		QUEUE_SOLO: preference.playsSolo,
+		QUEUE_FLEX: preference.playsFlex,
+		QUEUE_NORMALS: preference.playsNormals,
+		QUEUE_ARAM: preference.playsAram
+	};
+	const member = await guild.members.fetch(discordId).catch(() => null);
+	if (!member) return;
+
+	for (const [key, shouldHave] of Object.entries(desired)) {
+		const stored = await container.prisma.guildRole.findUnique({ where: { guildId_key: { guildId: guild.id, key } } });
+		if (!stored) continue;
+		const role = await fetchRole(guild, stored.roleId);
+		if (!role) continue;
+		if (shouldHave && !member.roles.cache.has(role.id)) await member.roles.add(role).catch((error) => logger.warn(`Could not add queue role ${key}.`, error));
+		if (!shouldHave && member.roles.cache.has(role.id)) await member.roles.remove(role).catch((error) => logger.warn(`Could not remove queue role ${key}.`, error));
 	}
 }

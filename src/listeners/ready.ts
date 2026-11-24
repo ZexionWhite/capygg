@@ -11,10 +11,7 @@ const logger = createLogger('roles');
 
 const dev = process.env.NODE_ENV !== 'production';
 
-@ApplyOptions<Listener.Options>({
-	once: true,
-	event: 'clientReady'
-})
+@ApplyOptions<Listener.Options>({ once: true })
 export class UserEvent extends Listener {
 	private readonly style = dev ? yellow : blue;
 

@@ -51,7 +51,8 @@ export const INTERACTION_IDS = {
 	verifyAccountModal: 'verify:account',
 	verifyReportModalPrefix: 'verify:report-modal:',
 	verifyCheckPrefix: 'verify:check:',
-	verifyCancelPrefix: 'verify:cancel:'
+	verifyCancelPrefix: 'verify:cancel:',
+	verifyQueues: 'verify:queues'
 } as const;
 
 export const FORM_FIELD_IDS = {

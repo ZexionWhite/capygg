@@ -30,12 +30,7 @@ export interface RiotChampionMastery {
 	championPointsSinceLastLevel: number;
 	championPointsUntilNextLevel: number;
 	tokensEarned: number;
-	chestGranted?: boolean;
-
-	markRequiredForNextLevel?: number;
-	championSeasonMilestone?: number;
-	milestoneGrades?: unknown;
-	nextSeasonMilestone?: unknown;
+	chestGranted?: boolean | null;
 }
 
 export interface RiotMatchParticipant {
@@ -63,6 +58,18 @@ export interface RiotMatchParticipant {
 	deaths: number;
 	assists: number;
 	placement?: number;
+	summoner1Id?: number;
+	summoner2Id?: number;
+	totalMinionsKilled?: number;
+	neutralMinionsKilled?: number;
+	goldEarned?: number;
+	totalDamageTaken?: number;
+	totalHeal?: number;
+	wardsPlaced?: number;
+	wardsKilled?: number;
+	baronKills?: number;
+	dragonKills?: number;
+	perks?: unknown;
 	isTft?: boolean;
 }
 

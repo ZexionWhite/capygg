@@ -8,6 +8,7 @@ import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
 import { isRegion, normalizeEloTier } from '../lib/types';
 import type { Region } from '../lib/types';
 import { noticeMessage } from '../lib/ui';
+import { syncQueuePreferenceRoles } from '../lib/roles';
 
 const regionChoices = Object.keys(REGIONS).map((region) => ({ name: region, value: region }));
 
@@ -120,6 +121,7 @@ export class ForceVerifyCommand extends Command {
 					this.container.logger.error(error);
 				}
 			}
+			await syncQueuePreferenceRoles(interaction.guild, user.id);
 			const lines = [`Se vinculó **${account.gameName}#${account.tagLine}** a ${user}.`];
 			if (!roleAssigned) lines.push('**Rol de región:** no se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.');
 			if (soloRank && !eloRoleAssigned) lines.push('**Rol de elo:** no se pudo asignar. Ejecutá `/setup` y verificá los permisos del bot.');

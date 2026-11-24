@@ -35,8 +35,11 @@ model RiotAccount {
   summonerLevel  Int?
   linkedAt       DateTime @default(now())
   masterySyncedAt DateTime?
+  rankSyncedAt DateTime?
   matchesSyncedAt DateTime?
   matchHistoryBackfilledAt DateTime?
+  matchHistoryBackfillOffset Int      @default(0)
+  matchHistoryBackfillComplete Boolean @default(false)
   championMasteries ChampionMastery[]
 }
 
@@ -153,9 +156,65 @@ model MatchParticipant {
   item5          Int?
   item6          Int?
   placement      Int?
+  summoner1Id    Int?
+  summoner2Id    Int?
+  totalMinionsKilled Int?
+  neutralMinionsKilled Int?
+  goldEarned     Int?
+  totalDamageTaken Int?
+  totalHeal      Int?
+  wardsPlaced    Int?
+  wardsKilled    Int?
+  baronKills     Int?
+  dragonKills    Int?
+  perksJson      String?
   match          MatchRecord @relation(fields: [matchId], references: [matchId], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([matchId, puuid])
   @@index([puuid, matchId])
+  @@index([puuid, championId])
+}
+
+
+/// Per-guild player preferences collected during verification.
+model PlayerGuildPreference {
+  id             Int      @id @default(autoincrement())
+  guildId        String
+  discordId      String
+  playsSolo      Boolean  @default(false)
+  playsFlex      Boolean  @default(false)
+  playsNormals   Boolean  @default(false)
+  playsAram      Boolean  @default(false)
+  primaryLane    String?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  @@unique([guildId, discordId])
+  @@index([discordId])
+}
+
+/// Every earned distinction is retained for profile display. Only one active distinction is mirrored as a Discord role.
+model DistinctionAward {
+  id             Int      @id @default(autoincrement())
+  guildId        String
+  discordId      String
+  key            String
+  awardedAt      DateTime @default(now())
+  revokedAt      DateTime?
+  source         String   @default("automatic")
+  @@index([guildId, discordId, awardedAt])
+  @@index([guildId, discordId, key])
+}
+
+model OtpOverride {
+  id             Int      @id @default(autoincrement())
+  guildId        String
+  discordId      String
+  puuid          String
+  championId     Int
+  actorDiscordId String
+  reason         String?
+  createdAt      DateTime @default(now())
+  @@index([guildId, discordId])
   @@index([puuid, championId])
 }
