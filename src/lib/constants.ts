@@ -7,15 +7,24 @@ export const ELO_TIERS = {
 	Challenger: { color: '#55B9DC' },
 	GrandMaster: { color: '#D94D42' },
 	Master: { color: '#B45BDF' },
-	Diamond: { color: '#55A8D8' },
+	Diamond: { color: '#6d6fe9' },
 	Emerald: { color: '#20A878' },
 	Platinum: { color: '#32B8A5' },
 	Gold: { color: '#E5B83B' },
 	Silver: { color: '#A9B5C5' },
 	Bronze: { color: '#A8754C' },
 	Iron: { color: '#795548' },
-	Unraked: { color: '#737B83' }
+	Unranked: { color: '#737B83' }
 } as const;
+
+/**
+ * Keys de roles que cambiaron de nombre: `keyVieja -> keyNueva`.
+ * Al arrancar el bot y al correr /setup, las filas guardadas con la key vieja se pasan a la nueva
+ * conservando el ID del rol de Discord, así el rol existente se renombra en vez de duplicarse.
+ */
+export const LEGACY_ROLE_KEYS: Readonly<Record<string, string>> = {
+	Unraked: 'Unranked'
+};
 
 export const REGIONS = {
 	LAS: { platform: 'la2', regionalRoute: 'americas' },

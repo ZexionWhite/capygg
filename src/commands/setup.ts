@@ -1,12 +1,11 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
-import { DiscordAPIError, MessageFlags, PermissionFlagsBits, type ColorResolvable, type Guild, type Role } from 'discord.js';
-import { ELO_TIERS, REGIONS } from '../lib/constants';
-import type { EloTier, Region } from '../lib/types';
+import { MessageFlags, PermissionFlagsBits } from 'discord.js';
+import { migrateLegacyRoleKeys, roleDefinitions, syncGuildRole, type RoleSyncOutcome } from '../lib/roles';
 import { noticeMessage } from '../lib/ui';
 
 @ApplyOptions<Command.Options>({
-	description: 'Create or reuse the roles required by the bot',
+	description: 'Create, reuse or update the roles required by the bot',
 	requiredUserPermissions: PermissionFlagsBits.Administrator
 })
 export class SetupCommand extends Command {
@@ -40,25 +39,36 @@ export class SetupCommand extends Command {
 				update: {}
 			});
 
-			let created = 0;
-			let reused = 0;
+			await migrateLegacyRoleKeys();
 
-			for (const tier of Object.keys(ELO_TIERS) as EloTier[]) {
-				const result = await this.ensureRole(guild, tier, 'ELO', ELO_TIERS[tier].color);
-				created += result.created ? 1 : 0;
-				reused += result.created ? 0 : 1;
+			const counts: Record<RoleSyncOutcome, number> = { created: 0, updated: 0, reused: 0 };
+			const failed: string[] = [];
+
+			for (const definition of roleDefinitions()) {
+				try {
+					counts[await syncGuildRole(guild, definition)]++;
+				} catch (error) {
+					this.container.logger.error(`[setup] ${guild.id}: no pude sincronizar el rol "${definition.name}".`, error);
+					failed.push(definition.name);
+				}
 			}
 
-			for (const region of Object.keys(REGIONS) as Region[]) {
-				const result = await this.ensureRole(guild, region, 'REGION');
-				created += result.created ? 1 : 0;
-				reused += result.created ? 0 : 1;
+			const summary = `Se crearon **${counts.created}** roles, se actualizaron **${counts.updated}** y se reutilizaron **${counts.reused}**.`;
+
+			if (failed.length > 0) {
+				return interaction.editReply(
+					noticeMessage(
+						'warning',
+						`${summary}\nNo pude procesar: ${failed.map((name) => `**${name}**`).join(', ')}.\nRevisá que el rol del bot esté **por encima** de esos roles y tenga el permiso **Gestionar roles**.`,
+						'Configuración incompleta'
+					)
+				);
 			}
 
 			return interaction.editReply(
 				noticeMessage(
 					'success',
-					`Se crearon **${created}** roles y se reutilizaron **${reused}** roles existentes.\nSiguiente paso: usá \`/set-verify-channel\` para publicar el panel de verificación.`,
+					`${summary}\nSiguiente paso: usá \`/set-verify-channel\` para publicar el panel de verificación.`,
 					'Configuración completada'
 				)
 			);
@@ -67,45 +77,6 @@ export class SetupCommand extends Command {
 			return interaction.editReply(
 				noticeMessage('error', 'No pude completar la configuración. Revisá los permisos del bot y los logs para más detalles.')
 			);
-		}
-	}
-
-	private async ensureRole(
-		guild: Guild,
-		key: EloTier | Region,
-		kind: 'ELO' | 'REGION',
-		color?: ColorResolvable
-	): Promise<{ role: Role; created: boolean }> {
-		const storedRole = await this.container.prisma.guildRole.findUnique({
-			where: { guildId_key: { guildId: guild.id, key } }
-		});
-
-		if (storedRole) {
-			const existingRole = await this.fetchRole(guild, storedRole.roleId);
-			if (existingRole) return { role: existingRole, created: false };
-		}
-
-		const role = await guild.roles.create({
-			name: key,
-			color,
-			reason: `Initial ${kind.toLowerCase()} role setup`
-		});
-
-		await this.container.prisma.guildRole.upsert({
-			where: { guildId_key: { guildId: guild.id, key } },
-			create: { guildId: guild.id, key, kind, roleId: role.id },
-			update: { kind, roleId: role.id }
-		});
-
-		return { role, created: true };
-	}
-
-	private async fetchRole(guild: Guild, roleId: string): Promise<Role | null> {
-		try {
-			return await guild.roles.fetch(roleId);
-		} catch (error) {
-			if (error instanceof DiscordAPIError && error.code === 10011) return null;
-			throw error;
 		}
 	}
 }

@@ -133,8 +133,8 @@ async function completeVerification(
         )?.tier;
 
         soloTier = riotTier
-            ? normalizeEloTier(riotTier) ?? 'Unraked'
-            : 'Unraked';
+            ? normalizeEloTier(riotTier) ?? 'Unranked'
+            : 'Unranked';
     } catch (error) {
         container.logger.error(error);
     }

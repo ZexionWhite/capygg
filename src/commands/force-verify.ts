@@ -5,7 +5,7 @@ import { QUEUES, REGIONS } from '../lib/constants';
 import { RiotApiError, riotClient } from '../lib/riot/client';
 import { riotErrorMessage } from '../lib/riot/messages';
 import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
-import { isEloTier, isRegion } from '../lib/types';
+import { isRegion, normalizeEloTier } from '../lib/types';
 import type { Region } from '../lib/types';
 import { noticeMessage } from '../lib/ui';
 
@@ -112,9 +112,10 @@ export class ForceVerifyCommand extends Command {
 			} catch (error) {
 				this.container.logger.error(error);
 			}
-			if (soloRank && isEloTier(soloRank.tier)) {
+			const soloTier = soloRank ? normalizeEloTier(soloRank.tier) : null;
+			if (soloTier) {
 				try {
-					eloRoleAssigned = await this.assignEloRole(interaction.guild, member, soloRank.tier);
+					eloRoleAssigned = await this.assignEloRole(interaction.guild, member, soloTier);
 				} catch (error) {
 					this.container.logger.error(error);
 				}
