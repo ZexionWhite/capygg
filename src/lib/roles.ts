@@ -41,7 +41,6 @@ export function roleDefinitions(): RoleDefinition[] {
 	];
 	const distinctions: RoleDefinition[] = [
 		{ key: 'OTP', kind: 'SPECIAL', name: 'OTP', color: null },
-		{ key: 'DIST_MAIN', kind: 'DISTINCTION', name: 'Main', color: null },
 		{ key: 'DIST_ARAM_PLAYER', kind: 'DISTINCTION', name: 'ARAM Player', color: null },
 		{ key: 'DIST_ARAM_MAYHEM_ENJOYER', kind: 'DISTINCTION', name: 'ARAM Mayhem Enjoyer', color: null },
 		{ key: 'DIST_SOLOQ_ABUSER', kind: 'DISTINCTION', name: 'SoloQ Abuser', color: null }

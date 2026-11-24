@@ -45,20 +45,19 @@ export async function refreshPlayerAutomation(puuid: string): Promise<void> {
 	]);
 
 	const srMatches = matches.filter((entry) => SR_QUEUES.includes(entry.match.queueId));
-
 	const lastHundred = srMatches.slice(0, 100);
 
 	const championCounts = countBy(lastHundred, (entry) => String(entry.championId));
-
 	const topChampion = Object.entries(championCounts).sort((a, b) => b[1] - a[1])[0];
 
 	const topMastery = masteries.find((entry) => entry.championId === Number(topChampion?.[0]));
 
 	const otpEarnedByStats = Boolean(
-		topMastery && topMastery.championPoints > 1_000_000 && lastHundred.length >= 100 && (topChampion?.[1] ?? 0) / 100 >= 0.7
+		topMastery &&
+		topMastery.championPoints > 1_000_000 &&
+		lastHundred.length >= 100 &&
+		(topChampion?.[1] ?? 0) / 100 >= 0.7
 	);
-
-	const mainEarned = Boolean(topChampion && lastHundred.length >= 20 && topChampion[1] / lastHundred.length >= 0.35);
 
 	const lane = detectLane(srMatches);
 
@@ -86,7 +85,7 @@ export async function refreshPlayerAutomation(puuid: string): Promise<void> {
 	]);
 
 	for (const guildRecord of guildRecords) {
-		// Prisma Guild is only a database record.
+		// Prisma Guild is a database record.
 		// Fetch the actual Discord.js Guild before managing roles or members.
 		const guild = await container.client.guilds.fetch(guildRecord.id).catch(() => null);
 
@@ -105,9 +104,10 @@ export async function refreshPlayerAutomation(puuid: string): Promise<void> {
 
 		if (!member) continue;
 
+		// OTP remains an independent Discord role, not a distinction.
 		await syncRole(guild, member, 'OTP', otpEarned);
-		await award(guildRecord.id, account.discordId, 'OTP', otpEarned);
 
+		// Persist the player's detected primary lane.
 		await container.prisma.playerGuildPreference.upsert({
 			where: {
 				guildId_discordId: {
@@ -125,11 +125,12 @@ export async function refreshPlayerAutomation(puuid: string): Promise<void> {
 			}
 		});
 
+		// Synchronize lane roles.
 		for (const key of LANE_KEYS) {
 			await syncRole(guild, member, `LANE_${key}`, lane === key);
 		}
 
-		await award(guildRecord.id, account.discordId, 'MAIN', mainEarned);
+		// Only actual distinctions are awarded here.
 		await award(guildRecord.id, account.discordId, 'ARAM_PLAYER', aramCount >= 20);
 		await award(guildRecord.id, account.discordId, 'ARAM_MAYHEM_ENJOYER', mayhemCount >= 1);
 		await award(guildRecord.id, account.discordId, 'SOLOQ_ABUSER', soloCount >= 50);
@@ -162,7 +163,9 @@ function detectLane(
 		}
 	}
 
-	const best = LANE_KEYS.map((key) => [key, counts[key]] as const).sort((a, b) => b[1] - a[1])[0];
+	const best = LANE_KEYS
+		.map((key) => [key, counts[key]] as const)
+		.sort((a, b) => b[1] - a[1])[0];
 
 	const validGames = LANE_KEYS.reduce((total, key) => total + counts[key], 0);
 
@@ -248,11 +251,15 @@ async function syncActiveDistinctionRole(guild: Guild, member: GuildMember, disc
 		const shouldHave = stored.key === desiredKey;
 
 		if (shouldHave && !member.roles.cache.has(role.id)) {
-			await member.roles.add(role).catch((error) => logger.warn(`Could not add distinction ${stored.key}.`, error));
+			await member.roles.add(role).catch((error) =>
+				logger.warn(`Could not add distinction ${stored.key}.`, error)
+			);
 		}
 
 		if (!shouldHave && member.roles.cache.has(role.id)) {
-			await member.roles.remove(role).catch((error) => logger.warn(`Could not remove distinction ${stored.key}.`, error));
+			await member.roles.remove(role).catch((error) =>
+				logger.warn(`Could not remove distinction ${stored.key}.`, error)
+			);
 		}
 	}
 }
