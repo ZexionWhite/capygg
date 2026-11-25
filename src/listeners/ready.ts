@@ -6,6 +6,7 @@ import { startVerificationWorker } from '../lib/verification/worker';
 import { migrateLegacyRoleKeys } from '../lib/roles';
 import { createLogger } from '../lib/logger';
 import { startRiotDataWorkers } from '../lib/riot/data-sync-worker';
+import { startChampionCatalogWorker } from '../lib/riot/champion-catalog';
 
 const logger = createLogger('roles');
 
@@ -21,6 +22,7 @@ export class UserEvent extends Listener {
 		void migrateLegacyRoleKeys().catch((error) => logger.error('Failed to migrate legacy role keys.', error));
 		startVerificationWorker();
 		startRiotDataWorkers();
+		startChampionCatalogWorker();
 	}
 
 	private printBanner() {
