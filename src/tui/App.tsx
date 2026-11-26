@@ -181,19 +181,22 @@ function CapybaraBubble({
 				borderStyle="round"
 				borderColor={completion ? (completion.success ? C.green : C.red) : C.border}
 				paddingX={1}
-				maxWidth={42}
+				width={Math.min(44, Math.max(18, stringWidth(message) + 2))}
+				flexShrink={1}
 			>
 				<Text
 					color={completion ? (completion.success ? C.green : C.red) : C.text}
 					italic
+					wrap="wrap"
 				>
-					{short(message, 36)}
+					{message}
 				</Text>
 			</Box>
 			<Text color={C.border}> ◀</Text>
 		</Box>
 	);
 }
+
 
 function ActivityLine({
 	crons,
@@ -223,7 +226,7 @@ function ActivityLine({
 	const runningCrons = crons.filter((job) => job.running);
 	const working = runningCrons.length > 0 || queue.active > 0 || queue.pending > 0;
 
-	const blinking = working && !completion;
+	const blinking = working;
 
 	useEffect(() => {
 		if (!blinking) {
@@ -258,15 +261,11 @@ function ActivityLine({
 	let detail = 'All systems quiet. The capybara is chilling.';
 	let accent = C.green;
 
-	if (completion) {
-		label = completion.success ? 'COMPLETED' : 'FAILED';
-		detail = completion.text;
-		accent = completion.success ? C.green : C.red;
-	} else if (activeCron) {
+	if (working && activeCron) {
 		label = 'WORKING';
 		detail = `${WORKING_MESSAGES[messageIndex]} · ${getCronPresentation(activeCron.name).title}${runningCrons.length > 1 ? ` +${runningCrons.length - 1} more` : ''}`;
 		accent = C.yellow;
-	} else if (activeRequest || queue.pending > 0) {
+	} else if (working && (activeRequest || queue.pending > 0)) {
 		label = 'WORKING';
 		detail = `${WORKING_MESSAGES[messageIndex]} · ${
 			activeRequest
@@ -274,6 +273,10 @@ function ActivityLine({
 				: `Riot queue · ${queue.pending} waiting · rate limit ${queue.nextRateLimitDelayMs}ms`
 		}`;
 		accent = C.cyan;
+	} else if (completion) {
+		label = completion.success ? 'COMPLETED' : 'FAILED';
+		detail = completion.text;
+		accent = completion.success ? C.green : C.red;
 	}
 
 	return (
@@ -794,6 +797,16 @@ export default function App() {
 			previousCronStates.current.set(job.name, job.running);
 		}
 	}, [crons]);
+
+	useEffect(() => {
+		if (!completion) return;
+
+		const timer = setTimeout(() => {
+			setCompletion(null);
+		}, 8_000);
+
+		return () => clearTimeout(timer);
+	}, [completion?.id]);
 
 	const filteredLogs = useMemo(
 		() =>
