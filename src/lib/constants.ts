@@ -65,7 +65,7 @@ export const FORM_FIELD_IDS = {
 
 export const PROFILE_ICON_CANDIDATES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] as const;
 
-export const DATA_DRAGON_VERSION = '16.22.1';
+export const DATA_DRAGON_VERSION = '16.23.1';
 
 export const VERIFICATION = {
 	/** Tiempo que tiene el usuario para cambiar el icono y tocar el botón. */

@@ -156,7 +156,7 @@ function detectLane(
 	for (const match of matches) {
 		const position = (match.teamPosition || match.individualPosition || '').toUpperCase();
 
-		const key = position === 'UTILITY' ? 'SUPPORT' : position === 'BOTTOM' ? 'ADC' : position;
+		const key = position === 'UTILITY' ? 'SUPPORT' : position === 'BOTTOM' ? 'ADC' : position === 'MIDDLE' ? 'MID' : position;
 
 		if (LANE_KEYS.includes(key as LaneKey)) {
 			counts[key as LaneKey]++;
@@ -295,4 +295,26 @@ async function safeFetchMember(guild: Guild, discordId: string): Promise<GuildMe
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * Re-evaluates every linked account (lane, OTP and distinction roles).
+ * Meant for the periodic job: it is idempotent and only touches a role when it actually has to change.
+ */
+export async function refreshAllPlayerAutomation(): Promise<string> {
+	const accounts = await container.prisma.riotAccount.findMany({
+		select: { puuid: true, gameName: true, tagLine: true }
+	});
+	let failed = 0;
+
+	for (const account of accounts) {
+		try {
+			await refreshPlayerAutomation(account.puuid);
+		} catch (error) {
+			failed++;
+			logger.warn(`Automation failed for ${account.gameName}#${account.tagLine}.`, error);
+		}
+	}
+
+	return `${accounts.length - failed}/${accounts.length} accounts evaluated · ${failed} errors`;
 }

@@ -240,7 +240,7 @@ export class LeaderboardCommand extends Command {
 		});
 
 		await this.container.prisma.$transaction([
-			this.container.prisma.rankSnapshot.deleteMany({ where: { puuid } }),
+			this.container.prisma.rankSnapshot.deleteMany({ where: { puuid, queue: { in: Object.values(QUEUES) } } }),
 			this.container.prisma.rankSnapshot.createMany({ data: rows })
 		]);
 	}

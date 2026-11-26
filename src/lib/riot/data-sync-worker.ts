@@ -1,5 +1,6 @@
 
 import { createLogger } from '../logger';
+import { refreshAllPlayerAutomation } from '../player/automation';
 import { scheduleCronJob } from '../scheduler';
 import { syncChampionMasteries, syncMatchHistory } from './data-sync';
 
@@ -28,7 +29,15 @@ export function startRiotDataWorkers(): void {
 		{ runOnStart: true }
 	);
 
-	logger.info('Champion mastery and match history workers started.');
+	// Lane, OTP and distinction roles. Runs after the data syncs have had time to store new matches.
+	scheduleCronJob(
+		'player-automation',
+		'0 */15 * * * *',
+		refreshAllPlayerAutomation,
+		{ runOnStart: true }
+	);
+
+	logger.info('Champion mastery, match history and player automation workers started.');
 }
 
 async function runMasterySync(): Promise<string> {

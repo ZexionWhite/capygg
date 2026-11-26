@@ -10,7 +10,8 @@ import {
 	TextDisplayBuilder,
 	ThumbnailBuilder
 } from 'discord.js';
-import { DATA_DRAGON_VERSION, INTERACTION_IDS } from './constants';
+import { INTERACTION_IDS } from './constants';
+import { dataDragonVersion, knownDataDragonVersion } from './ddragon';
 
 export const COLORS = {
 	primary: 0x5865f2,
@@ -51,7 +52,9 @@ export function container(color: number): ContainerBuilder {
 }
 
 export function profileIconUrl(iconId: number): string {
-	return `https://ddragon.leagueoflegends.com/cdn/${DATA_DRAGON_VERSION}/img/profileicon/${iconId}.png`;
+	// Mantiene la versión al día en segundo plano; mientras tanto usa la última conocida.
+	void dataDragonVersion();
+	return `https://ddragon.leagueoflegends.com/cdn/${knownDataDragonVersion()}/img/profileicon/${iconId}.png`;
 }
 
 /** Bloque de texto con una miniatura a la derecha. */
