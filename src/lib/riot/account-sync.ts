@@ -1,9 +1,9 @@
 import { container } from '@sapphire/framework';
-import type { RiotAccount } from '../../generated/prisma/client';
-import type { Region } from '../types';
-import type { RiotSummonerResponse } from '../types/riot';
-import { RiotApiError, riotClient } from './client';
-import { createLogger } from '../logger';
+import type { RiotAccount } from '../../generated/prisma/client.js';
+import type { Region } from '../types/index.js';
+import type { RiotSummonerResponse } from '../types/riot.js';
+import { RiotApiError, riotClient } from './client.js';
+import { createLogger } from '../logger.js';
 
 const logger = createLogger('riot.account-sync');
 

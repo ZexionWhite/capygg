@@ -1,13 +1,13 @@
 
 import { container } from '@sapphire/framework';
-import { createLogger } from '../logger';
-import type { RiotAccount } from '../../generated/prisma/client';
-import { isRegion } from '../types';
-import type { Region } from '../types';
-import type { RiotChampionMastery, RiotMatchParticipant } from '../types/riot';
-import { RiotApiError, riotClient } from './client';
-import { getQueueLabel } from './queue-labels';
-import type { RiotRequestPriority } from './request-queue';
+import { createLogger } from '../logger.js';
+import type { RiotAccount } from '../../generated/prisma/client.js';
+import { isRegion } from '../types/index.js';
+import type { Region } from '../types/index.js';
+import type { RiotChampionMastery, RiotMatchParticipant } from '../types/riot.js';
+import { RiotApiError, riotClient } from './client.js';
+import { getQueueLabel } from './queue-labels.js';
+import type { RiotRequestPriority } from './request-queue.js';
 
 const logger = createLogger('riot.data-sync');
 const MASTERY_TTL_MS = 6 * 60 * 60 * 1_000;

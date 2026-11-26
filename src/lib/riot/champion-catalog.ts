@@ -1,5 +1,5 @@
-import { createLogger } from '../logger';
-import { scheduleCronJob } from '../scheduler';
+import { createLogger } from '../logger.js';
+import { scheduleCronJob } from '../scheduler.js';
 
 const DATA_DRAGON_BASE_URL = 'https://ddragon.leagueoflegends.com';
 const DATA_DRAGON_LOCALE = 'es_AR';

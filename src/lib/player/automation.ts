@@ -1,6 +1,6 @@
 import { container } from '@sapphire/framework';
 import type { Guild, GuildMember } from 'discord.js';
-import { createLogger } from '../logger';
+import { createLogger } from '../logger.js';
 
 const logger = createLogger('player-automation');
 

@@ -1,8 +1,8 @@
 import { container } from '@sapphire/framework';
 import { DiscordAPIError, resolveColor, type Guild, type Role } from 'discord.js';
-import { ELO_TIERS, LEGACY_ROLE_KEYS, REGIONS } from './constants';
-import type { EloTier, Region } from './types';
-import { createLogger } from './logger';
+import { ELO_TIERS, LEGACY_ROLE_KEYS, REGIONS } from './constants.js';
+import type { EloTier, Region } from './types/index.js';
+import { createLogger } from './logger.js';
 
 const logger = createLogger('roles');
 

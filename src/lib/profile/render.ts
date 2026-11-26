@@ -1,9 +1,9 @@
 import { Resvg } from '@resvg/resvg-js';
-import { ELO_TIERS } from '../constants';
-import { championDisplayNames, summonerSpellFiles } from '../ddragon';
-import { bundledFontFiles, dataDragonVersion, ddragonUrls, localImage, positionIconPath, rankEmblemPath, remoteImage, remoteImageAny } from './assets';
-import { nextId, vectorIcon, type IconName } from './icons';
-import { formatClock, formatRelativeTime, type ProfileDistinction, type ProfilePosition, type StreakType } from './stats';
+import { ELO_TIERS } from '../constants.js';
+import { championDisplayNames, summonerSpellFiles } from '../ddragon.js';
+import { bundledFontFiles, dataDragonVersion, ddragonUrls, localImage, positionIconPath, rankEmblemPath, remoteImage, remoteImageAny } from './assets.js';
+import { nextId, vectorIcon, type IconName } from './icons.js';
+import { formatClock, formatRelativeTime, type ProfileDistinction, type ProfilePosition, type StreakType } from './stats.js';
 
 /* -------------------------------------------------------------------------- */
 /*  Datos que recibe el render                                                 */

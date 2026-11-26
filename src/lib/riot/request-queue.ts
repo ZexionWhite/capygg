@@ -1,12 +1,33 @@
-import { createLogger } from '../logger';
+import { createLogger } from '../logger.js';
 
 export type RiotRequestPriority = 'critical' | 'normal' | 'background';
+
+export interface RiotQueueActiveRequest {
+	priority: RiotRequestPriority;
+	region: string;
+	method: string;
+	startedAt: number;
+}
+
+export interface RiotQueueSnapshot {
+	active: number;
+	maxConcurrent: number;
+	activeRequests: RiotQueueActiveRequest[];
+	pendingByRegion: Record<string, number>;
+	completed: number;
+	failed: number;
+	pending: number;
+	pendingByPriority: Record<RiotRequestPriority, number>;
+	oldestPendingMs: number;
+	nextRateLimitDelayMs: number;
+}
 
 type QueueEntry = {
     priority: RiotRequestPriority;
     region: string;
     method: string;
     sequence: number;
+    queuedAt: number;
     task: () => Promise<unknown>;
     resolve: (value: unknown) => void;
     reject: (reason: unknown) => void;
@@ -24,8 +45,36 @@ const logger = createLogger('riot.queue');
 class RiotRequestQueue {
     private readonly pending: QueueEntry[] = [];
     private active = 0;
+    private readonly activeRequests = new Map<number, RiotQueueActiveRequest>();
+    private completed = 0;
+    private failed = 0;
     private sequence = 0;
     private wakeTimer: ReturnType<typeof setTimeout> | undefined;
+
+    public getSnapshot(): RiotQueueSnapshot {
+        const now = Date.now();
+        const pendingByPriority: Record<RiotRequestPriority, number> = { critical: 0, normal: 0, background: 0 };
+        const pendingByRegion: Record<string, number> = {};
+        for (const entry of this.pending) {
+            pendingByPriority[entry.priority]++;
+            pendingByRegion[entry.region] = (pendingByRegion[entry.region] ?? 0) + 1;
+        }
+        const oldest = this.pending.reduce((value, entry) => Math.min(value, entry.sequence), Number.POSITIVE_INFINITY);
+        const oldestEntry = this.pending.find((entry) => entry.sequence === oldest);
+        const delays = this.pending.map((entry) => riotRateLimiter.getDelayMs(entry.region, entry.method));
+        return {
+            active: this.active,
+            maxConcurrent: MAX_CONCURRENT_REQUESTS,
+            activeRequests: [...this.activeRequests.values()],
+            pendingByRegion,
+            completed: this.completed,
+            failed: this.failed,
+            pending: this.pending.length,
+            pendingByPriority,
+            oldestPendingMs: oldestEntry ? Math.max(0, now - oldestEntry.queuedAt) : 0,
+            nextRateLimitDelayMs: delays.length ? Math.min(...delays) : 0
+        };
+    }
 
     public enqueue<T>(
         priority: RiotRequestPriority,
@@ -39,6 +88,7 @@ class RiotRequestQueue {
                 region,
                 method,
                 sequence: this.sequence++,
+                queuedAt: Date.now(),
                 task: async () => task(),
                 resolve: (value) => resolve(value as T),
                 reject
@@ -80,12 +130,15 @@ class RiotRequestQueue {
             if (!entry) continue;
 
             this.active++;
+            const startedAt = Date.now();
+            this.activeRequests.set(entry.sequence, { priority: entry.priority, region: entry.region, method: entry.method, startedAt });
 
             void entry
                 .task()
-                .then(entry.resolve, entry.reject)
+                .then((value) => { this.completed++; entry.resolve(value); }, (error) => { this.failed++; entry.reject(error); })
                 .finally(() => {
                     this.active--;
+                    this.activeRequests.delete(entry.sequence);
                     this.pump();
                 });
         }

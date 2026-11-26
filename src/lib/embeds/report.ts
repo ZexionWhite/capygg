@@ -1,5 +1,5 @@
 import type { ContainerBuilder, User } from 'discord.js';
-import { COLORS, container, divider, text, unixTime } from '../ui';
+import { COLORS, container, divider, text, unixTime } from '../ui.js';
 
 export function buildErrorReportMessage(
 	user: User,

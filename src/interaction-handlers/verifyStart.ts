@@ -1,9 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ActionRowBuilder, ButtonInteraction, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
-import { FORM_FIELD_IDS, INTERACTION_IDS } from '../lib/constants';
-import { buildAlreadyLinkedMessage, buildVerificationInProgressMessage } from '../lib/embeds/verification';
-import { ephemeralNoticeMessage, ephemeralV2 } from '../lib/ui';
+import { FORM_FIELD_IDS, INTERACTION_IDS } from '../lib/constants.js';
+import { buildAlreadyLinkedMessage, buildVerificationInProgressMessage } from '../lib/embeds/verification.js';
+import { ephemeralNoticeMessage, ephemeralV2 } from '../lib/ui.js';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.Button

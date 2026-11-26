@@ -10,8 +10,8 @@ import {
 	type GuildMember,
 	type Message
 } from 'discord.js';
-import { buildVerificationPanel } from '../lib/embeds/verification';
-import { noticeMessage, v2 } from '../lib/ui';
+import { buildVerificationPanel } from '../lib/embeds/verification.js';
+import { noticeMessage, v2 } from '../lib/ui.js';
 
 @ApplyOptions<Command.Options>({
 	description: 'Configure the account verification channel',

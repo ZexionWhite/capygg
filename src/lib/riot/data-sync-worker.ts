@@ -1,8 +1,8 @@
 
-import { createLogger } from '../logger';
-import { refreshAllPlayerAutomation } from '../player/automation';
-import { scheduleCronJob } from '../scheduler';
-import { syncChampionMasteries, syncMatchBackfill, syncMatchHistory } from './data-sync';
+import { createLogger } from '../logger.js';
+import { refreshAllPlayerAutomation } from '../player/automation.js';
+import { scheduleCronJob } from '../scheduler.js';
+import { syncChampionMasteries, syncMatchBackfill, syncMatchHistory } from './data-sync.js';
 
 const logger = createLogger('riot.data-worker');
 

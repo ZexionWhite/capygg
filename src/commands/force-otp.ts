@@ -6,8 +6,8 @@ import {
 	MessageFlags,
 	PermissionFlagsBits
 } from 'discord.js';
-import { getChampionAutocompleteChoices, getChampionById } from '../lib/riot/champion-catalog';
-import { noticeMessage } from '../lib/ui';
+import { getChampionAutocompleteChoices, getChampionById } from '../lib/riot/champion-catalog.js';
+import { noticeMessage } from '../lib/ui.js';
 
 @ApplyOptions<Command.Options>({
 	description: 'Force verify an existing OTP and assign the OTP role',

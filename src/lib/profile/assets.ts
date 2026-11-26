@@ -2,9 +2,9 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { rootDir } from '../constants';
-import { dataDragonVersion } from '../ddragon';
-import { createLogger } from '../logger';
+import { rootDir } from '../constants.js';
+import { dataDragonVersion } from '../ddragon.js';
+import { createLogger } from '../logger.js';
 
 export { dataDragonVersion };
 

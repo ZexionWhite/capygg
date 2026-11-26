@@ -1,6 +1,8 @@
-import { join } from 'path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export const rootDir = join(__dirname, '..', '..');
+const currentDirectory = dirname(fileURLToPath(import.meta.url));
+export const rootDir = join(currentDirectory, '..', '..');
 export const srcDir = join(rootDir, 'src');
 
 export const ELO_TIERS = {

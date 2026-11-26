@@ -1,4 +1,4 @@
-import { RiotApiError } from './client';
+import { RiotApiError } from './client.js';
 
 export function riotErrorMessage(error: unknown): string {
 	if (!(error instanceof RiotApiError)) return 'Ocurrió un error inesperado al consultar Riot.';

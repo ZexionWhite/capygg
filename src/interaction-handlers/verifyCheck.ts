@@ -1,9 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ButtonInteraction } from 'discord.js';
-import { INTERACTION_IDS, VERIFICATION } from '../lib/constants';
-import { buildVerificationPendingMessage } from '../lib/embeds/verification';
-import { noticeMessage, v2 } from '../lib/ui';
+import { INTERACTION_IDS, VERIFICATION } from '../lib/constants.js';
+import { buildVerificationPendingMessage } from '../lib/embeds/verification.js';
+import { noticeMessage, v2 } from '../lib/ui.js';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.Button

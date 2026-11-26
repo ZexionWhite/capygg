@@ -1,8 +1,8 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { MessageFlags, PermissionFlagsBits } from 'discord.js';
-import { migrateLegacyRoleKeys, roleDefinitions, syncGuildRole, type RoleSyncOutcome } from '../lib/roles';
-import { noticeMessage } from '../lib/ui';
+import { migrateLegacyRoleKeys, roleDefinitions, syncGuildRole, type RoleSyncOutcome } from '../lib/roles.js';
+import { noticeMessage } from '../lib/ui.js';
 
 @ApplyOptions<Command.Options>({
 	description: 'Create, reuse or update the roles required by the bot',

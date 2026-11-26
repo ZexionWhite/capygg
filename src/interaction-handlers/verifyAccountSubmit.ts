@@ -1,14 +1,14 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ActionRowBuilder, MessageFlags, ModalSubmitInteraction, StringSelectMenuBuilder } from 'discord.js';
-import { FORM_FIELD_IDS, INTERACTION_IDS, PROFILE_ICON_CANDIDATES, REGIONS, VERIFICATION } from '../lib/constants';
-import { buildChallengeMessage } from '../lib/embeds/verification';
-import { RiotApiError, riotClient } from '../lib/riot/client';
-import { riotErrorMessage } from '../lib/riot/messages';
-import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
-import { isRegion } from '../lib/types';
-import type { Region } from '../lib/types';
-import { noticeMessage, v2 } from '../lib/ui';
+import { FORM_FIELD_IDS, INTERACTION_IDS, PROFILE_ICON_CANDIDATES, REGIONS, VERIFICATION } from '../lib/constants.js';
+import { buildChallengeMessage } from '../lib/embeds/verification.js';
+import { RiotApiError, riotClient } from '../lib/riot/client.js';
+import { riotErrorMessage } from '../lib/riot/messages.js';
+import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id.js';
+import { isRegion } from '../lib/types/index.js';
+import type { Region } from '../lib/types/index.js';
+import { noticeMessage, v2 } from '../lib/ui.js';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.ModalSubmit

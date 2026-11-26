@@ -2,7 +2,7 @@
 import 'dotenv/config';
 
 import { container } from '@sapphire/framework';
-import { riotClient } from '../lib/riot/client';
+import { riotClient } from '../lib/riot/client.js';
 
 const originalLogger = container.logger;
 

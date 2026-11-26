@@ -1,11 +1,11 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { ApplicationCommandOptionType, AttachmentBuilder } from 'discord.js';
-import { createLogger } from '../lib/logger';
-import { loadProfileData } from '../lib/profile/data';
-import { renderProfileImage } from '../lib/profile/render';
-import { isRegion } from '../lib/types';
-import { noticeMessage } from '../lib/ui';
+import { createLogger } from '../lib/logger.js';
+import { loadProfileData } from '../lib/profile/data.js';
+import { renderProfileImage } from '../lib/profile/render.js';
+import { isRegion } from '../lib/types/index.js';
+import { noticeMessage } from '../lib/ui.js';
 
 const log = createLogger('profile');
 

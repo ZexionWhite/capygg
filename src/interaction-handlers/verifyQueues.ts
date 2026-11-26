@@ -1,8 +1,8 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { StringSelectMenuInteraction } from 'discord.js';
-import { INTERACTION_IDS } from '../lib/constants';
-import { ephemeralNoticeMessage } from '../lib/ui';
+import { INTERACTION_IDS } from '../lib/constants.js';
+import { ephemeralNoticeMessage } from '../lib/ui.js';
 
 const QUEUE_LABELS: Record<string, string> = { SOLO: 'SoloQ', FLEX: 'Flex', NORMALS: 'Normals', ARAM: 'ARAM' };
 

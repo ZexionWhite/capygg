@@ -1,8 +1,8 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ButtonInteraction } from 'discord.js';
-import { INTERACTION_IDS } from '../lib/constants';
-import { noticeMessage } from '../lib/ui';
+import { INTERACTION_IDS } from '../lib/constants.js';
+import { noticeMessage } from '../lib/ui.js';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.Button

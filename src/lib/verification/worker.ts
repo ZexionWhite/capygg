@@ -1,16 +1,16 @@
 import { container } from '@sapphire/framework';
 import type { Guild } from 'discord.js';
-import type { VerificationChallenge } from '../../generated/prisma/client';
-import { QUEUES, VERIFICATION } from '../constants';
-import { buildVerificationFailedMessage, buildVerificationSuccessMessage } from '../embeds/verification';
-import { riotClient } from '../riot/client';
-import { riotErrorMessage } from '../riot/messages';
-import { isRegion, normalizeEloTier } from '../types';
-import type { Region } from '../types';
-import { noticeMessage, v2 } from '../ui';
-import { createLogger } from '../logger';
-import { scheduleCronJob } from '../scheduler';
-import { syncQueuePreferenceRoles } from '../roles';
+import type { VerificationChallenge } from '../../generated/prisma/client.js';
+import { QUEUES, VERIFICATION } from '../constants.js';
+import { buildVerificationFailedMessage, buildVerificationSuccessMessage } from '../embeds/verification.js';
+import { riotClient } from '../riot/client.js';
+import { riotErrorMessage } from '../riot/messages.js';
+import { isRegion, normalizeEloTier } from '../types/index.js';
+import type { Region } from '../types/index.js';
+import { noticeMessage, v2 } from '../ui.js';
+import { createLogger } from '../logger.js';
+import { scheduleCronJob } from '../scheduler.js';
+import { syncQueuePreferenceRoles } from '../roles.js';
 
 const logger = createLogger('verification');
 let workerStarted = false;

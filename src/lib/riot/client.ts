@@ -1,5 +1,5 @@
-import { REGIONS } from '../constants';
-import type { Region } from '../types';
+import { REGIONS } from '../constants.js';
+import type { Region } from '../types/index.js';
 import type {
 	RiotAccountResponse,
 	RiotApiErrorKind,
@@ -8,10 +8,10 @@ import type {
 	RiotMatchDetails,
 	RiotMatchSummary,
 	RiotSummonerResponse
-} from '../types/riot';
-import { createLogger } from '../logger';
-import { riotRateLimiter, riotRequestQueue } from './request-queue';
-import type { RiotRequestPriority } from './request-queue';
+} from '../types/riot.js';
+import { createLogger } from '../logger.js';
+import { riotRateLimiter, riotRequestQueue } from './request-queue.js';
+import type { RiotRequestPriority } from './request-queue.js';
 
 const REQUEST_TIMEOUT_MS = 8_000;
 const logger = createLogger('riot');

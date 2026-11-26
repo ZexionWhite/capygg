@@ -1,4 +1,4 @@
-import { DATA_DRAGON_VERSION } from './constants';
+import { DATA_DRAGON_VERSION } from './constants.js';
 
 const VERSIONS_URL = 'https://ddragon.leagueoflegends.com/api/versions.json';
 const REQUEST_TIMEOUT_MS = 4_000;

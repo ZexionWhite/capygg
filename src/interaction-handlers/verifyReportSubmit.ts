@@ -1,9 +1,9 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { InteractionHandler, InteractionHandlerTypes } from '@sapphire/framework';
 import { ChannelType, MessageFlags, ModalSubmitInteraction, PermissionFlagsBits } from 'discord.js';
-import { FORM_FIELD_IDS, INTERACTION_IDS } from '../lib/constants';
-import { buildErrorReportMessage } from '../lib/embeds/report';
-import { noticeMessage, v2 } from '../lib/ui';
+import { FORM_FIELD_IDS, INTERACTION_IDS } from '../lib/constants.js';
+import { buildErrorReportMessage } from '../lib/embeds/report.js';
+import { noticeMessage, v2 } from '../lib/ui.js';
 
 @ApplyOptions<InteractionHandler.Options>({
 	interactionHandlerType: InteractionHandlerTypes.ModalSubmit

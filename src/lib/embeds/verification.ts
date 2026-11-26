@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, type ContainerBuilder } from 'discord.js';
-import { INTERACTION_IDS } from '../constants';
-import { COLORS, container, divider, profileIconUrl, reportButtonRow, text, textWithThumbnail, unixTime } from '../ui';
+import { INTERACTION_IDS } from '../constants.js';
+import { COLORS, container, divider, profileIconUrl, reportButtonRow, text, textWithThumbnail, unixTime } from '../ui.js';
 
 /** Panel permanente que se publica en el canal de verificación. */
 export function buildVerificationPanel(): ContainerBuilder {

@@ -10,8 +10,8 @@ import {
 	TextDisplayBuilder,
 	ThumbnailBuilder
 } from 'discord.js';
-import { INTERACTION_IDS } from './constants';
-import { dataDragonVersion, knownDataDragonVersion } from './ddragon';
+import { INTERACTION_IDS } from './constants.js';
+import { dataDragonVersion, knownDataDragonVersion } from './ddragon.js';
 
 export const COLORS = {
 	primary: 0x5865f2,

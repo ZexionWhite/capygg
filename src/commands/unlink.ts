@@ -1,10 +1,10 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { MessageFlags, type GuildMember } from 'discord.js';
-import { ELO_TIERS } from '../lib/constants';
-import { isEloTier, isRegion } from '../lib/types';
-import { noticeMessage } from '../lib/ui';
-import { removeManagedPlayerRoles } from '../lib/roles';
+import { ELO_TIERS } from '../lib/constants.js';
+import { isEloTier, isRegion } from '../lib/types/index.js';
+import { noticeMessage } from '../lib/ui.js';
+import { removeManagedPlayerRoles } from '../lib/roles.js';
 
 @ApplyOptions<Command.Options>({
 	description: 'Unlink your League of Legends account'

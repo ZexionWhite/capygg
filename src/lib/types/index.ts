@@ -1,4 +1,4 @@
-import { ELO_TIERS, QUEUES, REGIONS } from '../constants';
+import { ELO_TIERS, QUEUES, REGIONS } from '../constants.js';
 
 export type EloTier = keyof typeof ELO_TIERS;
 export type Region = keyof typeof REGIONS;

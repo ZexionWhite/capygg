@@ -2,11 +2,11 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Listener } from '@sapphire/framework';
 import type { StoreRegistryValue } from '@sapphire/pieces';
 import { blue, gray, green, magenta, magentaBright, white, yellow } from 'colorette';
-import { startVerificationWorker } from '../lib/verification/worker';
-import { migrateLegacyRoleKeys } from '../lib/roles';
-import { createLogger } from '../lib/logger';
-import { startRiotDataWorkers } from '../lib/riot/data-sync-worker';
-import { startChampionCatalogWorker } from '../lib/riot/champion-catalog';
+import { startVerificationWorker } from '../lib/verification/worker.js';
+import { migrateLegacyRoleKeys } from '../lib/roles.js';
+import { createLogger } from '../lib/logger.js';
+import { startRiotDataWorkers } from '../lib/riot/data-sync-worker.js';
+import { startChampionCatalogWorker } from '../lib/riot/champion-catalog.js';
 
 const logger = createLogger('roles');
 
@@ -17,7 +17,7 @@ export class UserEvent extends Listener {
 	private readonly style = dev ? yellow : blue;
 
 	public override run() {
-		this.printBanner();
+		if (process.env.CAPYGG_TUI !== '1') this.printBanner();
 		this.printStoreDebugInformation();
 		void migrateLegacyRoleKeys().catch((error) => logger.error('Failed to migrate legacy role keys.', error));
 		startVerificationWorker();

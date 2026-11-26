@@ -1,13 +1,13 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { ActionRowBuilder, ApplicationCommandOptionType, ButtonBuilder, ButtonStyle, ComponentType, type Guild } from 'discord.js';
-import type { RiotAccount } from '../generated/prisma/client';
-import { QUEUES } from '../lib/constants';
-import { refreshStoredPuuid } from '../lib/riot/account-sync';
-import { RiotApiError, riotClient } from '../lib/riot/client';
-import { isRegion } from '../lib/types';
-import type { RiotLeagueEntry } from '../lib/types/riot';
-import { COLORS, container as card, divider, ephemeralNoticeMessage, noticeMessage, text, v2 } from '../lib/ui';
+import type { RiotAccount } from '../generated/prisma/client.js';
+import { QUEUES } from '../lib/constants.js';
+import { refreshStoredPuuid } from '../lib/riot/account-sync.js';
+import { RiotApiError, riotClient } from '../lib/riot/client.js';
+import { isRegion } from '../lib/types/index.js';
+import type { RiotLeagueEntry } from '../lib/types/riot.js';
+import { COLORS, container as card, divider, ephemeralNoticeMessage, noticeMessage, text, v2 } from '../lib/ui.js';
 
 /** Cuánto tiempo se reutiliza un rango guardado antes de volver a preguntarle a Riot. */
 const CACHE_TTL_MS = 30 * 60 * 1_000;

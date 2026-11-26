@@ -1,13 +1,13 @@
 import { container } from '@sapphire/framework';
-import type { RiotAccount } from '../../generated/prisma/client';
-import { QUEUES } from '../constants';
-import { createLogger } from '../logger';
-import { syncRiotId, getSummonerRefreshingPuuid } from '../riot/account-sync';
-import { riotClient } from '../riot/client';
-import { syncAccountMatches } from '../riot/data-sync';
-import type { Region } from '../types';
-import type { RiotLeagueEntry } from '../types/riot';
-import { MATCH_ROWS, type ProfileMatchRow, type ProfileRank, type ProfileRenderData } from './render';
+import type { RiotAccount } from '../../generated/prisma/client.js';
+import { QUEUES } from '../constants.js';
+import { createLogger } from '../logger.js';
+import { syncRiotId, getSummonerRefreshingPuuid } from '../riot/account-sync.js';
+import { riotClient } from '../riot/client.js';
+import { syncAccountMatches } from '../riot/data-sync.js';
+import type { Region } from '../types/index.js';
+import type { RiotLeagueEntry } from '../types/riot.js';
+import { MATCH_ROWS, type ProfileMatchRow, type ProfileRank, type ProfileRenderData } from './render.js';
 import {
 	aggregateChampions,
 	calculateStreak,
@@ -23,7 +23,7 @@ import {
 	splitTeams,
 	SR_QUEUE_IDS,
 	type MatchPlayer
-} from './stats';
+} from './stats.js';
 
 const log = createLogger('profile');
 

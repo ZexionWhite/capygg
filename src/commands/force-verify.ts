@@ -1,14 +1,14 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { ApplicationCommandOptionType, MessageFlags, PermissionFlagsBits, type Guild, type GuildMember } from 'discord.js';
-import { QUEUES, REGIONS } from '../lib/constants';
-import { RiotApiError, riotClient } from '../lib/riot/client';
-import { riotErrorMessage } from '../lib/riot/messages';
-import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id';
-import { isRegion, normalizeEloTier } from '../lib/types';
-import type { Region } from '../lib/types';
-import { noticeMessage } from '../lib/ui';
-import { syncQueuePreferenceRoles } from '../lib/roles';
+import { QUEUES, REGIONS } from '../lib/constants.js';
+import { RiotApiError, riotClient } from '../lib/riot/client.js';
+import { riotErrorMessage } from '../lib/riot/messages.js';
+import { InvalidRiotIdError, parseRiotId } from '../lib/riot/riot-id.js';
+import { isRegion, normalizeEloTier } from '../lib/types/index.js';
+import type { Region } from '../lib/types/index.js';
+import { noticeMessage } from '../lib/ui.js';
+import { syncQueuePreferenceRoles } from '../lib/roles.js';
 
 const regionChoices = Object.keys(REGIONS).map((region) => ({ name: region, value: region }));
 
