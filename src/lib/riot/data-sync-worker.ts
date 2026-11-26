@@ -2,7 +2,7 @@
 import { createLogger } from '../logger';
 import { refreshAllPlayerAutomation } from '../player/automation';
 import { scheduleCronJob } from '../scheduler';
-import { syncChampionMasteries, syncMatchHistory } from './data-sync';
+import { syncChampionMasteries, syncMatchBackfill, syncMatchHistory } from './data-sync';
 
 const logger = createLogger('riot.data-worker');
 
@@ -29,6 +29,14 @@ export function startRiotDataWorkers(): void {
 		{ runOnStart: true }
 	);
 
+	// Deep history backfill (up to 500 matches per account). A newly linked player is picked up within a few minutes.
+	scheduleCronJob(
+		'riot-match-backfill',
+		'0 */3 * * * *',
+		() => syncMatchBackfill(),
+		{ runOnStart: true }
+	);
+
 	// Lane, OTP and distinction roles. Runs after the data syncs have had time to store new matches.
 	scheduleCronJob(
 		'player-automation',
@@ -37,7 +45,7 @@ export function startRiotDataWorkers(): void {
 		{ runOnStart: true }
 	);
 
-	logger.info('Champion mastery, match history and player automation workers started.');
+	logger.info('Champion mastery, match history, match backfill and player automation workers started.');
 }
 
 async function runMasterySync(): Promise<string> {
