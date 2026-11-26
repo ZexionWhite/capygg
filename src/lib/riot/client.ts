@@ -213,71 +213,90 @@ export class RiotClient {
 		if (!this.apiKey) {
 			throw new RiotApiError('KEY_INVALID_OR_EXPIRED', 'RIOT_API_KEY is not configured.', 401);
 		}
-		const apiKey = this.apiKey;
 
+		const apiKey = this.apiKey;
 		const endpoint = this.endpointLabel(url);
 		const rateLimitRegion = new URL(url).hostname;
 
-		return riotRequestQueue.enqueue(priority, async () => {
-			for (let attempt = 0; attempt < 2; attempt++) {
-				await riotRateLimiter.waitUntilAllowed(rateLimitRegion, endpoint);
-				const startedAt = Date.now();
+		for (let attempt = 0; attempt < 2; attempt++) {
+			let response: Response;
 
-				try {
+			try {
+				response = await riotRequestQueue.enqueue(priority, rateLimitRegion, endpoint, async () => {
+					const startedAt = Date.now();
 					const controller = new AbortController();
 					const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-					let response: Response;
 
 					try {
-						response = await fetch(url, {
+						const result = await fetch(url, {
 							headers: { 'X-Riot-Token': apiKey },
 							signal: controller.signal
 						});
+
+						const duration = Date.now() - startedAt;
+
+						riotRateLimiter.observeResponse(rateLimitRegion, endpoint, result, startedAt);
+
+						logger.debug(`GET ${endpoint} -> HTTP ${result.status} (${duration}ms).`);
+
+						return result;
+					} catch (error) {
+						const duration = Date.now() - startedAt;
+
+						if (error instanceof DOMException && error.name === 'AbortError') {
+							logger.warn(`GET ${endpoint} timed out after ${duration}ms.`);
+
+							throw new RiotApiError('UNAVAILABLE', 'Riot request timed out.');
+						}
+
+						logger.warn(`GET ${endpoint} failed after ${duration}ms: ${String(error)}`);
+
+						throw new RiotApiError('UNAVAILABLE', 'Riot could not be reached.');
 					} finally {
 						clearTimeout(timeout);
 					}
+				});
+			} catch (error) {
+				if (error instanceof RiotApiError) throw error;
 
-					const duration = Date.now() - startedAt;
-					riotRateLimiter.observeResponse(rateLimitRegion, endpoint, response, startedAt);
+				logger.warn(`GET ${endpoint} failed: ${String(error)}`);
 
-					if (response.status === 429) {
-						const retryAfter = riotRateLimiter.getRetryAfterMs(response);
-						logger.warn(`GET ${endpoint} -> HTTP 429 (${duration}ms)${attempt === 0 ? ' · retrying after cooldown' : ''}.`);
-						await response.body?.cancel().catch(() => undefined);
-						if (attempt === 0) continue;
-						throw new RiotApiError(
-							'RATE_LIMITED',
-							`Riot API rate limit reached${retryAfter === null ? '' : ` (retry after ${Math.ceil(retryAfter / 1_000)}s)`}.`,
-							429
-						);
-					}
-
-					logger.debug(`GET ${endpoint} -> HTTP ${response.status} (${duration}ms).`);
-					if (response.ok) return (await response.json()) as T;
-
-					if (response.status >= 500 && attempt === 0) {
-						await new Promise((resolve) => setTimeout(resolve, 1_000));
-						continue;
-					}
-
-					const body = await response.text().catch(() => '');
-					throw this.errorForStatus(response.status, body);
-				} catch (error) {
-					if (error instanceof RiotApiError) throw error;
-					const duration = Date.now() - startedAt;
-
-					if (error instanceof DOMException && error.name === 'AbortError') {
-						logger.warn(`GET ${endpoint} timed out after ${duration}ms.`);
-						throw new RiotApiError('UNAVAILABLE', 'Riot request timed out.');
-					}
-
-					logger.warn(`GET ${endpoint} failed after ${duration}ms: ${String(error)}`);
-					throw new RiotApiError('UNAVAILABLE', 'Riot could not be reached.');
-				}
+				throw new RiotApiError('UNAVAILABLE', 'Riot could not be reached.');
 			}
 
-			throw new RiotApiError('UNAVAILABLE', 'Riot request failed after retry.');
-		});
+			if (response.status === 429) {
+				const retryAfter = riotRateLimiter.getRetryAfterMs(response);
+
+				logger.warn(
+					`GET ${endpoint} -> HTTP 429 (${retryAfter === null ? 'unknown cooldown' : `${retryAfter}ms cooldown`})${attempt === 0 ? ' · retrying' : ''}.`
+				);
+
+				await response.body?.cancel().catch(() => undefined);
+
+				if (attempt === 0) continue;
+
+				throw new RiotApiError(
+					'RATE_LIMITED',
+					`Riot API rate limit reached${retryAfter === null ? '' : ` (retry after ${Math.ceil(retryAfter / 1_000)}s)`}.`,
+					429
+				);
+			}
+
+			if (response.ok) {
+				return (await response.json()) as T;
+			}
+
+			if (response.status >= 500 && attempt === 0) {
+				await response.body?.cancel().catch(() => undefined);
+				await new Promise<void>((resolve) => setTimeout(resolve, 1_000));
+				continue;
+			}
+
+			const body = await response.text().catch(() => '');
+			throw this.errorForStatus(response.status, body);
+		}
+
+		throw new RiotApiError('UNAVAILABLE', 'Riot request failed after retry.');
 	}
 
 	/** Removes player identifiers from request paths before writing them to logs. */
