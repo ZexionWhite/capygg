@@ -217,7 +217,7 @@ const SUMMONER_RETRY_MS = 60 * 1_000;
 const lastSummonerSync = new Map<string, number>();
 
 /** Trae el ícono y el nivel actuales de Riot (como máximo cada 10 min por cuenta) y los guarda. Nunca falla: ante un error devuelve la cuenta tal cual. */
-async function syncSummoner(account: RiotAccount, region: Region): Promise<RiotAccount> {
+export async function syncSummoner(account: RiotAccount, region: Region): Promise<RiotAccount> {
 	const last = lastSummonerSync.get(account.puuid) ?? 0;
 	if (Date.now() - last < SUMMONER_TTL_MS) return account;
 	lastSummonerSync.set(account.puuid, Date.now());

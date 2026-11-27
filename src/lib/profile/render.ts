@@ -86,7 +86,7 @@ const WIDTH = 1200;
 const RENDER_SCALE = 1.5;
 export const MATCH_ROWS = 5;
 
-const C = {
+export const C = {
 	pageTop: '#06070d',
 	pageBottom: '#0a0b14',
 	card: '#0b0d14',
@@ -110,7 +110,7 @@ const C = {
 	green: '#5fe39a'
 };
 
-type FontName = 'inter' | 'rajdhani';
+export type FontName = 'inter' | 'rajdhani';
 
 /* -------------------------------------------------------------------------- */
 /*  Punto de entrada                                                           */
@@ -164,7 +164,7 @@ export async function renderProfileImage(data: ProfileRenderData): Promise<Buffe
 	return rasterize(svg);
 }
 
-function rasterize(svg: string): Buffer {
+export function rasterize(svg: string): Buffer {
 	const fontFiles = bundledFontFiles();
 	const resvg = new Resvg(svg, {
 		fitTo: { mode: 'zoom', value: RENDER_SCALE },
@@ -180,11 +180,11 @@ function rasterize(svg: string): Buffer {
 /*  Helpers de SVG                                                             */
 /* -------------------------------------------------------------------------- */
 
-function esc(value: string): string {
+export function esc(value: string): string {
 	return value.replace(/[<>&'"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[char] ?? char);
 }
 
-interface TextOptions {
+export interface TextOptions {
 	font?: FontName;
 	size: number;
 	weight?: number;
@@ -193,7 +193,7 @@ interface TextOptions {
 	spacing?: number;
 }
 
-function text(x: number, y: number, content: string, o: TextOptions): string {
+export function text(x: number, y: number, content: string, o: TextOptions): string {
 	const family = o.font === 'rajdhani' ? 'Rajdhani' : 'Inter';
 	return `<text x="${x}" y="${y}" font-family="${family}" font-size="${o.size}" font-weight="${o.weight ?? 400}" fill="${o.fill ?? C.text}"${
 		o.anchor && o.anchor !== 'start' ? ` text-anchor="${o.anchor}"` : ''
@@ -207,7 +207,7 @@ const WIDTHS: Record<FontName, { space: number; narrow: number; wide: number; up
 };
 
 /** Ancho aproximado del texto (error medio ~5%). Alcanza para dimensionar pastillas y acomodar elementos en fila. */
-function textWidth(content: string, size: number, font: FontName = 'inter', spacing = 0): number {
+export function textWidth(content: string, size: number, font: FontName = 'inter', spacing = 0): number {
 	const table = WIDTHS[font];
 	let units = 0;
 	for (const char of content) {
@@ -226,15 +226,15 @@ function championLabel(ctx: Ctx, championName: string): string {
 	return ctx.names.get(championName) ?? championName.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
-function truncate(value: string, max: number): string {
+export function truncate(value: string, max: number): string {
 	return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
-function line(x1: number, y1: number, x2: number, y2: number, stroke = C.divider): string {
+export function line(x1: number, y1: number, x2: number, y2: number, stroke = C.divider): string {
 	return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="1"/>`;
 }
 
-interface ImageOptions {
+export interface ImageOptions {
 	radius?: number;
 	circle?: boolean;
 	fit?: 'slice' | 'meet';
@@ -243,7 +243,7 @@ interface ImageOptions {
 	opacity?: number;
 }
 
-function image(href: string | null | undefined, x: number, y: number, w: number, h: number, o: ImageOptions = {}): string {
+export function image(href: string | null | undefined, x: number, y: number, w: number, h: number, o: ImageOptions = {}): string {
 	const id = nextId('clip');
 	const clip = o.circle ? `<circle cx="${x + w / 2}" cy="${y + h / 2}" r="${w / 2}"/>` : `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.radius ?? 0}"/>`;
 	const opacity = o.opacity !== undefined ? ` opacity="${o.opacity}"` : '';
@@ -259,7 +259,7 @@ function image(href: string | null | undefined, x: number, y: number, w: number,
 	return `<clipPath id="${id}">${clip}</clipPath><g clip-path="url(#${id})">${body}</g>`;
 }
 
-function pillShape(x: number, y: number, w: number, h: number, fill: string, stroke: string): string {
+export function pillShape(x: number, y: number, w: number, h: number, fill: string, stroke: string): string {
 	return `<rect x="${x + 0.65}" y="${y + 0.65}" width="${w - 1.3}" height="${h - 1.3}" rx="${(h - 1.3) / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1.3"/>`;
 }
 
@@ -312,19 +312,19 @@ function distinctionIcon(ctx: Ctx, key: string, x: number, y: number, size: numb
 
 const APEX_TIERS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
 
-function tierName(rank: ProfileRank | undefined): string {
+export function tierName(rank: ProfileRank | undefined): string {
 	if (!rank) return 'UNRANKED';
 	const tier = rank.tier.toUpperCase();
 	return APEX_TIERS.has(tier) || !rank.division ? tier : `${tier} ${rank.division}`;
 }
 
-function tierColor(rank: ProfileRank | undefined): string {
+export function tierColor(rank: ProfileRank | undefined): string {
 	const tier = (rank?.tier ?? 'UNRANKED').toUpperCase();
 	const key = (Object.keys(ELO_TIERS) as Array<keyof typeof ELO_TIERS>).find((candidate) => candidate.toUpperCase() === tier);
 	return key ? ELO_TIERS[key].color : ELO_TIERS.Unranked.color;
 }
 
-function winRate(wins: number, losses: number): number {
+export function winRate(wins: number, losses: number): number {
 	return wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
 }
 
